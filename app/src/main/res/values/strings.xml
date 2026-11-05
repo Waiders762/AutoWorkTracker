@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AutoWorkTracker</string>
+    <string name="channel_shifts">Смены</string>
+    <string name="channel_shifts_description">Автоматическая запись отработанных часов</string>
+    <string name="channel_presence">Присутствие на работе</string>
+    <string name="channel_presence_description">Вход, подтверждение и короткие визиты</string>
+</resources>
