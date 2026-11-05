@@ -3,17 +3,15 @@
 ![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.4-7F52FF?logo=kotlin&logoColor=white)
 ![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white)
-[![Download](https://img.shields.io/github/v/release/Oleggur0007/AutoWorkTracker?label=Download%20APK&color=1D9E75)](https://github.com/Oleggur0007/AutoWorkTracker/releases/latest)
+[![Download](https://img.shields.io/github/v/release/Waiders762/AutoWorkTracker?label=Download%20APK&color=1D9E75)](https://github.com/Waiders762/AutoWorkTracker/releases/latest)
 
 AutoWorkTracker is an Android app for shift workers. Put a pin on your workplace, leave the building when the shift ends, and the day is written down for you. The month screen shows hours, how many short and long shifts you worked, and pay in the currency you choose.
 
-The phone does not keep GPS running. A sleeping geofence wakes Android only when you enter or leave work, so the battery stays quiet between those events.
+**Location must stay on.** The GPS switch in the notification shade is required. The geofence uses that signal to notice when you enter work and when you leave, then it writes the shift. If location is off, the day is not recorded.
 
-**[Download the APK](https://github.com/Oleggur0007/AutoWorkTracker/releases/latest)** · Android 8.0 or newer · arm64 phones · version 1.3.0
+**[Download the APK](https://github.com/Waiders762/AutoWorkTracker/releases/latest)** · Android 8.0 or newer · arm64 phones · version 1.3.0
 
 The published package is a debug build, signed with the debug key. Install it only if you trust this repository. Allow installation from unknown sources, then open the file on the phone.
-
-The phone does not keep GPS running. A sleeping geofence wakes the system only when you enter or leave the workplace, so the battery stays quiet between those events.
 
 Package: `com.autoworktracker`. The debug build targets `arm64-v8a`.
 
@@ -31,9 +29,9 @@ If the evening overwrite option is on, a short shift already saved for that day 
 
 The alarm backup on each rule is off by default. Hours are written when you leave the geofence. If you turn the backup on, it uses a fresh GPS fix and does not close the shift when accuracy is worse than 50 meters.
 
-## Sleeping geofence
+## Geofence
 
-One geofence covers entry, a 15-minute dwell, and exit. `GeofencingClient` wakes the app at those boundaries. GPS is not sampled every second. On the home screen, distance is a one-shot precise fix: while accuracy is worse than 80 meters, the card shows the workplace radius instead of a guessed distance.
+Keep location enabled in the notification shade for the whole shift. One geofence covers entry, a 15-minute stay, and exit. Android reports those events through `GeofencingClient`. On the home screen, distance is a fresh GPS fix: while accuracy is worse than 80 meters, the card shows the workplace radius instead of a guessed distance.
 
 ## Backup
 
