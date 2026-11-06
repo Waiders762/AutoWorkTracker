@@ -8,6 +8,8 @@ import com.autoworktracker.domain.repository.SettingsRepository
 import com.autoworktracker.domain.repository.ShiftRepository
 import com.autoworktracker.domain.usecase.EvaluateExitUseCase
 import com.autoworktracker.domain.usecase.ExitDecision
+import com.autoworktracker.domain.model.AppLanguage
+import com.autoworktracker.domain.util.AppText
 import com.autoworktracker.domain.util.RussianDateFormatter
 import com.autoworktracker.notification.NotificationHelper
 import java.time.Instant
@@ -30,7 +32,9 @@ class ShiftCoordinator(
     suspend fun onEnter(epochMillis: Long = System.currentTimeMillis()) = mutex.withLock {
         val zone = ZoneId.systemDefault()
         val today = epochMillis.toLocalDate(zone)
-        val stored = settingsRepository.current().presence
+        val settings = settingsRepository.current()
+        val text = AppText.of(settings.language)
+        val stored = settings.presence
         val presence = if (stored.isForDay(today, zone)) stored else PresenceState()
         if (presence.onSite) return@withLock
         val updated = presence.copy(
@@ -41,16 +45,15 @@ class ShiftCoordinator(
         )
         settingsRepository.updatePresence(updated)
         val clock = RussianDateFormatter.formatTime(epochMillis.toLocalTime(zone))
-        notifications.notifyPresence(
-            "На смене",
-            "Вход в $clock. Смена подтвердится через 15 минут на территории.",
-        )
+        notifications.notifyPresence(text.onShiftTitle(), text.onShiftBody(clock))
     }
 
     suspend fun onDwell(epochMillis: Long = System.currentTimeMillis()) = mutex.withLock {
         val zone = ZoneId.systemDefault()
         val today = epochMillis.toLocalDate(zone)
-        val stored = settingsRepository.current().presence
+        val settings = settingsRepository.current()
+        val text = AppText.of(settings.language)
+        val stored = settings.presence
         val presence = if (stored.isForDay(today, zone)) stored else PresenceState()
         val updated = presence.copy(
             onSite = true,
@@ -61,10 +64,7 @@ class ShiftCoordinator(
         )
         settingsRepository.updatePresence(updated)
         if (!presence.dwellConfirmed) {
-            notifications.notifyPresence(
-                "На работе — смена идёт",
-                "Вы на территории больше 15 минут.",
-            )
+            notifications.notifyPresence(text.dwellTitle(), text.dwellBody())
         }
     }
 
@@ -102,15 +102,13 @@ class ShiftCoordinator(
         val today = epochMillis.toLocalDate(zone)
         val exitTime = epochMillis.toLocalTime(zone).withSecond(0).withNano(0)
         val settings = settingsRepository.current()
+        val text = AppText.of(settings.language)
         val presence = effectivePresence(settings.presence, epochMillis, zone)
         val stayedMs = presence.lastEntryEpochMillis?.let { epochMillis - it } ?: 0L
         val realVisit = presence.dwellConfirmed || stayedMs >= LOITER_MS
         if (!realVisit) {
             settingsRepository.updatePresence(presence.copy(onSite = false, dwellConfirmed = false))
-            notifications.notifyPresence(
-                "Короткий визит",
-                "Вы были в зоне меньше 15 минут — часы не записаны.",
-            )
+            notifications.notifyPresence(text.shortVisitTitle(), text.shortVisitBody())
             return
         }
         val existing = shiftRepository.getByDate(today)
@@ -122,13 +120,22 @@ class ShiftCoordinator(
                 overwriteEnabled = settings.overwriteShortWithLong,
             )
         ) {
-            is ExitDecision.Apply -> saveShift(today, exitTime, presence, existing, decision.rule.hours, source, epochMillis)
+            is ExitDecision.Apply -> saveShift(
+                today,
+                exitTime,
+                presence,
+                existing,
+                decision.rule.hours,
+                source,
+                epochMillis,
+                settings.language,
+            )
             is ExitDecision.KeepExisting -> Unit
             ExitDecision.OutsideWindow -> {
                 if (existing == null) {
                     notifications.notifyPresence(
-                        "Выход вне окна смены",
-                        "Уход в ${RussianDateFormatter.formatTime(exitTime)} не попал ни в одно правило. Запись не создана.",
+                        text.outsideWindowTitle(),
+                        text.outsideWindowBody(RussianDateFormatter.formatTime(exitTime)),
                     )
                 }
             }
@@ -150,6 +157,7 @@ class ShiftCoordinator(
         hours: Double,
         source: ShiftSource,
         epochMillis: Long,
+        language: AppLanguage,
     ) {
         val zone = ZoneId.systemDefault()
         val entryTime = presence.firstEntryEpochMillis?.let { entry ->
@@ -167,7 +175,7 @@ class ShiftCoordinator(
         )
         val changed = existing == null || abs(existing.hours - shift.hours) > 0.001
         shiftRepository.upsert(shift)
-        if (changed) notifications.notifyShiftRecorded(shift)
+        if (changed) notifications.notifyShiftRecorded(shift, language)
     }
 
     private fun effectivePresence(presence: PresenceState, epochMillis: Long, zone: ZoneId): PresenceState {

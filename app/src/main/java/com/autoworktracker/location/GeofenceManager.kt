@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.autoworktracker.domain.model.GeofenceStatus
 import com.autoworktracker.domain.model.Workplace
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
@@ -23,7 +24,7 @@ import kotlinx.coroutines.withTimeout
 
 data class GeofenceRegistration(
     val active: Boolean = false,
-    val message: String = "Геозона не зарегистрирована",
+    val status: GeofenceStatus = GeofenceStatus.NotRegistered,
 )
 
 class GeofenceManager(private val context: Context) {
@@ -32,18 +33,18 @@ class GeofenceManager(private val context: Context) {
     private val mutableRegistration = MutableStateFlow(GeofenceRegistration())
     val registration: StateFlow<GeofenceRegistration> = mutableRegistration.asStateFlow()
 
-    fun markInactive(message: String) {
-        mutableRegistration.value = GeofenceRegistration(active = false, message = message)
+    fun markInactive(status: GeofenceStatus) {
+        mutableRegistration.value = GeofenceRegistration(active = false, status = status)
     }
 
     suspend fun register(workplace: Workplace) {
         if (!LocationPermissions.canMonitor(appContext)) {
-            markInactive("Нужно разрешение геолокации «в любом режиме»")
+            markInactive(GeofenceStatus.NeedBackgroundPermission)
             return
         }
         val playServices = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(appContext)
         if (playServices != ConnectionResult.SUCCESS) {
-            markInactive("Сервисы Google Play недоступны")
+            markInactive(GeofenceStatus.PlayServicesUnavailable)
             return
         }
         val safe = workplace.sanitized()
@@ -80,19 +81,21 @@ class GeofenceManager(private val context: Context) {
             }
             mutableRegistration.value = GeofenceRegistration(
                 active = true,
-                message = "Геозона активна · радиус ${safe.radiusMeters.toInt()} м",
+                status = GeofenceStatus.Active(safe.radiusMeters.toInt()),
             )
             Log.i(TAG, "Geofence registered")
         } catch (error: TimeoutCancellationException) {
             mutableRegistration.value = GeofenceRegistration(
                 active = false,
-                message = "Геозона не ответила вовремя",
+                status = GeofenceStatus.Timeout,
             )
             Log.e(TAG, "Geofence registration timed out", error)
         } catch (error: Exception) {
             val code = (error as? ApiException)?.statusCode
-            val message = if (code != null) geofenceError(code) else "Геозона не включилась"
-            mutableRegistration.value = GeofenceRegistration(active = false, message = message)
+            mutableRegistration.value = GeofenceRegistration(
+                active = false,
+                status = GeofenceStatus.Error(code),
+            )
             Log.e(TAG, "Geofence registration failed", error)
         }
     }
@@ -105,15 +108,6 @@ class GeofenceManager(private val context: Context) {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
         )
-    }
-
-    private fun geofenceError(code: Int): String {
-        return when (code) {
-            1000 -> "Геозоны недоступны. Включите геолокацию и сервисы Google Play."
-            1001 -> "Слишком много геозон в системе."
-            1002 -> "Слишком много ожидающих геозон."
-            else -> "Не удалось включить геозону ($code)"
-        }
     }
 
     companion object {

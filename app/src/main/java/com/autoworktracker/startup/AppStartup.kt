@@ -2,6 +2,7 @@ package com.autoworktracker.startup
 
 import android.util.Log
 import com.autoworktracker.data.backup.BackupManager
+import com.autoworktracker.domain.util.AppText
 import com.autoworktracker.domain.repository.SettingsRepository
 import com.autoworktracker.domain.repository.ShiftRepository
 import com.autoworktracker.location.MonitoringMaintenance
@@ -40,17 +41,19 @@ class AppStartup(
         if (shiftRepository.count() == 0) {
             val bytes = backupManager.readBestBackup()
             if (bytes != null) {
+                val language = settingsRepository.current().language
                 try {
-                    val parsed = backupManager.parse(bytes)
+                    val parsed = backupManager.parse(bytes, language)
                     shiftRepository.replaceAll(parsed.shifts, mirror = false)
                     parsed.settings?.let { settingsRepository.applyRestoredSettings(it, mirror = false) }
                     settingsRepository.setInitialized(true)
                     backupManager.mirror()
-                    startupState.post("История восстановлена: ${parsed.shifts.size}")
+                    val restoredLanguage = parsed.settings?.language ?: language
+                    startupState.post(AppText.of(restoredLanguage).historyRestored(parsed.shifts.size))
                     startupState.setOfferRestore(false)
                 } catch (error: Exception) {
                     Log.e(TAG, "Automatic restore failed", error)
-                    startupState.post("Бэкап найден, но не прочитан. Выберите файл вручную.")
+                    startupState.post(AppText.of(language).backupUnreadableManual())
                     startupState.setOfferRestore(true)
                 }
             } else {

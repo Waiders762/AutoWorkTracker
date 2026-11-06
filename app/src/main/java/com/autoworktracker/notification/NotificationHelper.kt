@@ -13,22 +13,16 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.autoworktracker.MainActivity
 import com.autoworktracker.R
-import com.autoworktracker.data.preferences.SettingsDataStore
 import com.autoworktracker.domain.model.AppLanguage
 import com.autoworktracker.domain.model.Shift
 import com.autoworktracker.domain.util.AppText
 import com.autoworktracker.domain.util.RussianDateFormatter
-import kotlinx.coroutines.runBlocking
 
-class NotificationHelper(
-    context: Context,
-    private val settingsDataStore: SettingsDataStore,
-) {
+class NotificationHelper(context: Context) {
     private val appContext = context.applicationContext
 
-    fun notifyShiftRecorded(shift: Shift) {
+    fun notifyShiftRecorded(shift: Shift, language: AppLanguage) {
         if (!canNotify()) return
-        val language = currentLanguage()
         val text = AppText.of(language)
         val line = RussianDateFormatter.recordLine(shift.date, shift.hours, language)
         val clock = listOfNotNull(
@@ -85,10 +79,6 @@ class NotificationHelper(
         )
     }
 
-    private fun currentLanguage(): AppLanguage {
-        return runBlocking { settingsDataStore.current().language }
-    }
-
     private fun canNotify(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         return ContextCompat.checkSelfPermission(
@@ -103,9 +93,8 @@ class NotificationHelper(
         private const val SHIFT_NOTIFICATION_ID = 42
         private const val PRESENCE_NOTIFICATION_ID = 43
 
-        fun createChannels(context: Context) {
+        fun createChannels(context: Context, language: AppLanguage) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-            val language = runBlocking { SettingsDataStore(context).current().language }
             val text = AppText.of(language)
             val manager = context.getSystemService(NotificationManager::class.java)
             val shifts = NotificationChannel(

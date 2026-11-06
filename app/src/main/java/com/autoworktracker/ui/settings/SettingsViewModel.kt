@@ -159,7 +159,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setLanguage(language: AppLanguage) {
         viewModelScope.launch {
             container.settingsRepository.setLanguage(language)
-            NotificationHelper.createChannels(getApplication())
+            NotificationHelper.createChannels(getApplication(), language)
         }
     }
 

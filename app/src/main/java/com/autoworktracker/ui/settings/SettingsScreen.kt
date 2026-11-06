@@ -8,6 +8,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,7 +24,15 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -81,7 +90,7 @@ fun SettingsScreen(
     val text = AppText.of(state.settings.language)
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
-    CollectUserEvents(viewModel.events, snackbar)
+    CollectUserEvents(viewModel.events, snackbar, text = text)
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -120,14 +129,15 @@ fun SettingsScreen(
 
     val workplace = state.settings.workplace
     val radius = workplace?.radiusMeters ?: Workplace.DEFAULT_RADIUS_METERS
-    var name by rememberSaveable { mutableStateOf(workplace?.name ?: text.defaultWorkplaceName) }
+    val workplaceName = text.workplaceFieldName(workplace?.name)
+    var name by rememberSaveable(workplace?.name, text.defaultWorkplaceName) { mutableStateOf(workplaceName) }
     var latitude by rememberSaveable { mutableStateOf(workplace?.let { formatCoord(it.latitude) }.orEmpty()) }
     var longitude by rememberSaveable { mutableStateOf(workplace?.let { formatCoord(it.longitude) }.orEmpty()) }
     var rate by rememberSaveable {
         mutableStateOf(state.settings.hourlyRate?.let { HoursFormatter.formatNumber(it, state.settings.language) }.orEmpty())
     }
     androidx.compose.runtime.LaunchedEffect(workplace?.latitude, workplace?.longitude, workplace?.name, text.defaultWorkplaceName) {
-        name = workplace?.name ?: text.defaultWorkplaceName
+        name = text.workplaceFieldName(workplace?.name)
         latitude = workplace?.let { formatCoord(it.latitude) }.orEmpty()
         longitude = workplace?.let { formatCoord(it.longitude) }.orEmpty()
     }
@@ -164,15 +174,10 @@ fun SettingsScreen(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    AppLanguage.entries.forEach { language ->
-                        FilterChip(
-                            selected = state.settings.language == language,
-                            onClick = { viewModel.setLanguage(language) },
-                            label = { Text(language.chip) },
-                        )
-                    }
-                }
+                LanguageMenu(
+                    selected = state.settings.language,
+                    onSelect = viewModel::setLanguage,
+                )
             }
             Text(
                 text.settingsSubtitle,
@@ -448,8 +453,46 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun LanguageMenu(
+    selected: AppLanguage,
+    onSelect: (AppLanguage) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val options = listOf(
+        AppLanguage.RU to "Русский (RU)",
+        AppLanguage.UK to "Українська (UA)",
+        AppLanguage.CS to "Čeština (CZ)",
+        AppLanguage.EN to "English (EN)",
+    )
+    Box {
+        FilledTonalButton(onClick = { expanded = true }) {
+            Icon(Icons.Filled.Translate, contentDescription = null)
+            Text(selected.chip)
+            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { (language, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        onSelect(language)
+                        expanded = false
+                    },
+                    trailingIcon = if (language == selected) {
+                        { Icon(Icons.Filled.Check, contentDescription = null) }
+                    } else {
+                        null
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SectionCard(title: String, content: @Composable () -> Unit) {
     Card(
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
@@ -509,13 +552,17 @@ private fun RuleCard(
     onEnd: (LocalTime) -> Unit,
     onDelete: () -> Unit,
 ) {
-    var name by rememberSaveable(rule.id, rule.name) { mutableStateOf(rule.name) }
+    val localizedName = text.ruleBadge(rule)
+    var name by rememberSaveable(rule.id, localizedName) { mutableStateOf(localizedName) }
     var hours by rememberSaveable(rule.id, rule.hours, language) {
         mutableStateOf(HoursFormatter.formatNumber(rule.hours, language))
     }
     var picking by rememberSaveable { mutableStateOf<String?>(null) }
     val hourPresets = listOf(7.5, 11.0, 11.5)
-    Card(shape = RoundedCornerShape(22.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+    ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SwitchRow(title = text.ruleEnabled, checked = rule.enabled, onChecked = onEnabled)
             OutlinedTextField(

@@ -1,6 +1,7 @@
 package com.autoworktracker.domain.util
 
 import com.autoworktracker.domain.model.AppLanguage
+import com.autoworktracker.domain.model.GeofenceStatus
 import com.autoworktracker.domain.model.ShiftRule
 
 class AppText(
@@ -145,6 +146,7 @@ class AppText(
     val save: String,
     val deleteRecord: String,
     val close: String,
+    val language: AppLanguage,
 ) {
     fun others(count: Int): String = "$othersLabel: $count"
 
@@ -175,9 +177,220 @@ class AppText(
     fun radiusMeters(meters: Int): String = radiusPattern(meters)
 
     fun ruleBadge(rule: ShiftRule): String {
-        if (rule.id == "short" && rule.name == "Короткая смена") return shortShift
-        if (rule.id == "long" && rule.name == "Длинная смена") return longShift
+        val defaultShorts = setOf("Короткая смена", "Коротка зміна", "Krátká směna", "Short shift")
+        val defaultLongs = setOf("Длинная смена", "Довга зміна", "Dlouhá směna", "Long shift")
+        if (rule.id == "short" && rule.name in defaultShorts) return shortShift
+        if (rule.id == "long" && rule.name in defaultLongs) return longShift
         return rule.name
+    }
+
+    fun workplaceFieldName(stored: String?): String {
+        val defaults = setOf("Работа", "Робота", "Práce", "Work")
+        if (stored.isNullOrBlank() || stored in defaults) return defaultWorkplaceName
+        return stored
+    }
+
+    fun geofenceStatus(status: GeofenceStatus): String = when (status) {
+        GeofenceStatus.NotRegistered -> when (language) {
+            AppLanguage.RU -> "Геозона не зарегистрирована"
+            AppLanguage.UK -> "Геозона не зареєстрована"
+            AppLanguage.CS -> "Geozóna není zaregistrovaná"
+            AppLanguage.EN -> "Geofence is not registered"
+        }
+        GeofenceStatus.WorkplaceNotSet -> when (language) {
+            AppLanguage.RU -> "Точка работы не задана"
+            AppLanguage.UK -> "Точку роботи не задано"
+            AppLanguage.CS -> "Místo práce není nastaveno"
+            AppLanguage.EN -> "Workplace is not set"
+        }
+        GeofenceStatus.NeedBackgroundPermission -> when (language) {
+            AppLanguage.RU -> "Нужно разрешение геолокации «в любом режиме»"
+            AppLanguage.UK -> "Потрібен дозвіл геолокації «у будь-якому режимі»"
+            AppLanguage.CS -> "Je potřeba poloha „v každém režimu“"
+            AppLanguage.EN -> "Location “all the time” is required"
+        }
+        GeofenceStatus.PlayServicesUnavailable -> when (language) {
+            AppLanguage.RU -> "Сервисы Google Play недоступны"
+            AppLanguage.UK -> "Сервіси Google Play недоступні"
+            AppLanguage.CS -> "Služby Google Play nejsou dostupné"
+            AppLanguage.EN -> "Google Play services are unavailable"
+        }
+        is GeofenceStatus.Active -> when (language) {
+            AppLanguage.RU -> "Геозона активна · радиус ${status.radiusMeters} м"
+            AppLanguage.UK -> "Геозона активна · радіус ${status.radiusMeters} м"
+            AppLanguage.CS -> "Geozóna aktivní · poloměr ${status.radiusMeters} m"
+            AppLanguage.EN -> "Geofence active · radius ${status.radiusMeters} m"
+        }
+        GeofenceStatus.Timeout -> when (language) {
+            AppLanguage.RU -> "Геозона не ответила вовремя"
+            AppLanguage.UK -> "Геозона не відповіла вчасно"
+            AppLanguage.CS -> "Geozóna neodpověděla včas"
+            AppLanguage.EN -> "The geofence did not answer in time"
+        }
+        is GeofenceStatus.Error -> geofenceError(status.code)
+    }
+
+    private fun geofenceError(code: Int?): String {
+        if (code == null) {
+            return when (language) {
+                AppLanguage.RU -> "Геозона не включилась"
+                AppLanguage.UK -> "Геозона не ввімкнулася"
+                AppLanguage.CS -> "Geozónu se nepodařilo zapnout"
+                AppLanguage.EN -> "The geofence did not turn on"
+            }
+        }
+        return when (code) {
+            1000 -> when (language) {
+                AppLanguage.RU -> "Геозоны недоступны. Включите геолокацию и сервисы Google Play."
+                AppLanguage.UK -> "Геозони недоступні. Увімкніть геолокацію та сервіси Google Play."
+                AppLanguage.CS -> "Geozóny nejsou dostupné. Zapněte polohu a služby Google Play."
+                AppLanguage.EN -> "Geofences are unavailable. Turn on location and Google Play services."
+            }
+            1001 -> when (language) {
+                AppLanguage.RU -> "Слишком много геозон в системе."
+                AppLanguage.UK -> "Забагато геозон у системі."
+                AppLanguage.CS -> "V systému je příliš mnoho geozón."
+                AppLanguage.EN -> "Too many geofences on the device."
+            }
+            1002 -> when (language) {
+                AppLanguage.RU -> "Слишком много ожидающих геозон."
+                AppLanguage.UK -> "Забагато геозон в очікуванні."
+                AppLanguage.CS -> "Příliš mnoho čekajících geozón."
+                AppLanguage.EN -> "Too many pending geofences."
+            }
+            else -> when (language) {
+                AppLanguage.RU -> "Не удалось включить геозону ($code)"
+                AppLanguage.UK -> "Не вдалося ввімкнути геозону ($code)"
+                AppLanguage.CS -> "Geozónu se nepodařilo zapnout ($code)"
+                AppLanguage.EN -> "Could not turn the geofence on ($code)"
+            }
+        }
+    }
+
+    fun onShiftTitle(): String = when (language) {
+        AppLanguage.RU -> "На смене"
+        AppLanguage.UK -> "На зміні"
+        AppLanguage.CS -> "Na směně"
+        AppLanguage.EN -> "On shift"
+    }
+
+    fun onShiftBody(clock: String): String = when (language) {
+        AppLanguage.RU -> "Вход в $clock. Смена подтвердится через 15 минут на территории."
+        AppLanguage.UK -> "Вхід о $clock. Зміна підтвердиться через 15 хвилин на території."
+        AppLanguage.CS -> "Příchod v $clock. Směna se potvrdí po 15 minutách v areálu."
+        AppLanguage.EN -> "Arrived at $clock. The shift is confirmed after 15 minutes on site."
+    }
+
+    fun dwellTitle(): String = when (language) {
+        AppLanguage.RU -> "На работе — смена идёт"
+        AppLanguage.UK -> "На роботі — зміна триває"
+        AppLanguage.CS -> "V práci — směna běží"
+        AppLanguage.EN -> "At work — shift in progress"
+    }
+
+    fun dwellBody(): String = when (language) {
+        AppLanguage.RU -> "Вы на территории больше 15 минут."
+        AppLanguage.UK -> "Ви на території більше 15 хвилин."
+        AppLanguage.CS -> "Jste v areálu déle než 15 minut."
+        AppLanguage.EN -> "You have been on site for more than 15 minutes."
+    }
+
+    fun shortVisitTitle(): String = when (language) {
+        AppLanguage.RU -> "Короткий визит"
+        AppLanguage.UK -> "Короткий візит"
+        AppLanguage.CS -> "Krátká návštěva"
+        AppLanguage.EN -> "Short visit"
+    }
+
+    fun shortVisitBody(): String = when (language) {
+        AppLanguage.RU -> "Вы были в зоне меньше 15 минут — часы не записаны."
+        AppLanguage.UK -> "Ви були в зоні менше 15 хвилин — години не записані."
+        AppLanguage.CS -> "V zóně jste byli méně než 15 minut — hodiny se nezapsaly."
+        AppLanguage.EN -> "You were in the zone for less than 15 minutes — hours were not saved."
+    }
+
+    fun outsideWindowTitle(): String = when (language) {
+        AppLanguage.RU -> "Выход вне окна смены"
+        AppLanguage.UK -> "Вихід поза вікном зміни"
+        AppLanguage.CS -> "Odchod mimo okno směny"
+        AppLanguage.EN -> "Exit outside the shift window"
+    }
+
+    fun outsideWindowBody(time: String): String = when (language) {
+        AppLanguage.RU -> "Уход в $time не попал ни в одно правило. Запись не создана."
+        AppLanguage.UK -> "Вихід о $time не потрапив у жодне правило. Запис не створено."
+        AppLanguage.CS -> "Odchod v $time nespadl do žádného pravidla. Záznam nebyl vytvořen."
+        AppLanguage.EN -> "Leaving at $time did not match any rule. No record was created."
+    }
+
+    fun recordDeleted(): String = when (language) {
+        AppLanguage.RU -> "Запись удалена"
+        AppLanguage.UK -> "Запис видалено"
+        AppLanguage.CS -> "Záznam smazán"
+        AppLanguage.EN -> "Record deleted"
+    }
+
+    fun undo(): String = when (language) {
+        AppLanguage.RU -> "Вернуть"
+        AppLanguage.UK -> "Повернути"
+        AppLanguage.CS -> "Vrátit"
+        AppLanguage.EN -> "Undo"
+    }
+
+    fun shareFailed(): String = when (language) {
+        AppLanguage.RU -> "Не удалось открыть меню «Поделиться»"
+        AppLanguage.UK -> "Не вдалося відкрити меню «Поділитися»"
+        AppLanguage.CS -> "Nepodařilo se otevřít nabídku sdílení"
+        AppLanguage.EN -> "Could not open the share menu"
+    }
+
+    fun shareChooser(): String = when (language) {
+        AppLanguage.RU -> "Поделиться отчётом"
+        AppLanguage.UK -> "Поділитися звітом"
+        AppLanguage.CS -> "Sdílet výkaz"
+        AppLanguage.EN -> "Share report"
+    }
+
+    fun historyRestored(count: Int): String = when (language) {
+        AppLanguage.RU -> "История восстановлена: $count"
+        AppLanguage.UK -> "Історію відновлено: $count"
+        AppLanguage.CS -> "Historie obnovena: $count"
+        AppLanguage.EN -> "History restored: $count"
+    }
+
+    fun backupUnreadableManual(): String = when (language) {
+        AppLanguage.RU -> "Бэкап найден, но не прочитан. Выберите файл вручную."
+        AppLanguage.UK -> "Бекап знайдено, але не прочитано. Виберіть файл вручну."
+        AppLanguage.CS -> "Záloha byla nalezena, ale nešla přečíst. Vyberte soubor ručně."
+        AppLanguage.EN -> "A backup was found but could not be read. Choose the file manually."
+    }
+
+    fun jsonCorrupt(): String = when (language) {
+        AppLanguage.RU -> "Файл JSON повреждён или это не бэкап AutoWorkTracker"
+        AppLanguage.UK -> "Файл JSON пошкоджений або це не бекап AutoWorkTracker"
+        AppLanguage.CS -> "Soubor JSON je poškozený, nebo to není záloha AutoWorkTracker"
+        AppLanguage.EN -> "The JSON file is damaged or it is not an AutoWorkTracker backup"
+    }
+
+    fun noReportLines(): String = when (language) {
+        AppLanguage.RU -> "В файле не найдено строк вида «2 ноября: 11 часов»"
+        AppLanguage.UK -> "У файлі не знайдено рядків на кшталт «2 листопада: 11 годин»"
+        AppLanguage.CS -> "V souboru nejsou řádky jako «2. listopadu: 11 hodin»"
+        AppLanguage.EN -> "The file has no lines like “November 2: 11 hours”"
+    }
+
+    fun writeFailed(missing: String): String = when (language) {
+        AppLanguage.RU -> "Не удалось записать $missing в Documents"
+        AppLanguage.UK -> "Не вдалося записати $missing у Documents"
+        AppLanguage.CS -> "Nepodařilo se zapsat $missing do Documents"
+        AppLanguage.EN -> "Could not write $missing to Documents"
+    }
+
+    fun fileDidNotOpen(): String = when (language) {
+        AppLanguage.RU -> "Файл не открылся"
+        AppLanguage.UK -> "Файл не відкрився"
+        AppLanguage.CS -> "Soubor se neotevřel"
+        AppLanguage.EN -> "The file could not be opened"
     }
 
     companion object {
@@ -251,8 +464,8 @@ private fun russian() = AppText(
     longitude = "Долгота",
     savePoint = "Сохранить точку",
     rulesSection = "Правила смен",
-    overwriteTitle = "Перезаписывать дневную смену при уходе вечером",
-    overwriteHint = "Если днём уже записана короткая смена, вечером день перезапишется на часы из правила длинной смены: 11 или 11,5.",
+    overwriteTitle = "Обновлять смену при уходе вечером",
+    overwriteHint = "Если вы выходили с территории днём (например, на перерыв в 14:00) и записалась короткая смена, то при уходе домой вечером запись за сегодня автоматически обновится на полную длинную смену.",
     addRule = "Добавить правило",
     paySection = "Оплата",
     ratePattern = { currency -> "Ставка, $currency/час" },
@@ -333,6 +546,7 @@ private fun russian() = AppText(
     save = "Сохранить",
     deleteRecord = "Удалить запись",
     close = "Закрыть",
+    language = AppLanguage.RU,
 )
 
 private fun ukrainian() = AppText(
@@ -396,8 +610,8 @@ private fun ukrainian() = AppText(
     longitude = "Довгота",
     savePoint = "Зберегти точку",
     rulesSection = "Правила змін",
-    overwriteTitle = "Перезаписувати денну зміну, коли йдете ввечері",
-    overwriteHint = "Якщо вдень уже записана коротка зміна, увечері день перезапишеться на години з правила довгої зміни: 11 або 11,5.",
+    overwriteTitle = "Оновлювати зміну при виході ввечері",
+    overwriteHint = "Якщо ви виходили з території вдень (наприклад, на перерву о 14:00) і записалася коротка зміна, то при виході додому ввечері запис за сьогодні автоматично оновиться на повну довгу зміну.",
     addRule = "Додати правило",
     paySection = "Оплата",
     ratePattern = { currency -> "Ставка, $currency/год" },
@@ -478,6 +692,7 @@ private fun ukrainian() = AppText(
     save = "Зберегти",
     deleteRecord = "Видалити запис",
     close = "Закрити",
+    language = AppLanguage.UK,
 )
 
 private fun czech() = AppText(
@@ -541,8 +756,8 @@ private fun czech() = AppText(
     longitude = "Zeměpisná délka",
     savePoint = "Uložit místo",
     rulesSection = "Pravidla směn",
-    overwriteTitle = "Přepsat denní směnu při večerním odchodu",
-    overwriteHint = "Pokud je přes den už zapsaná krátká směna, večer se den přepíše na hodiny z pravidla dlouhé směny: 11 nebo 11,5.",
+    overwriteTitle = "Aktualizovat směnu při večerním odchodu",
+    overwriteHint = "Pokud jste přes den odešli z areálu (např. na pauzu ve 14:00) a zapsala se krátká směna, při odchodu domů večer se dnešní záznam automaticky přepíše na celou dlouhou směnu.",
     addRule = "Přidat pravidlo",
     paySection = "Odměna",
     ratePattern = { currency -> "Sazba, $currency/h" },
@@ -623,6 +838,7 @@ private fun czech() = AppText(
     save = "Uložit",
     deleteRecord = "Smazat záznam",
     close = "Zavřít",
+    language = AppLanguage.CS,
 )
 
 private fun english() = AppText(
@@ -686,8 +902,8 @@ private fun english() = AppText(
     longitude = "Longitude",
     savePoint = "Save workplace",
     rulesSection = "Shift rules",
-    overwriteTitle = "Replace the daytime shift when you leave in the evening",
-    overwriteHint = "If a short shift is already saved for the day, the evening exit rewrites it with the long-shift hours: 11 or 11.5.",
+    overwriteTitle = "Update shift on evening exit",
+    overwriteHint = "If you stepped out during the day (for example, on a break at 14:00) and a short shift was logged, leaving work in the evening will automatically update today's record to a full long shift.",
     addRule = "Add rule",
     paySection = "Pay",
     ratePattern = { currency -> "Rate, $currency/hour" },
@@ -768,4 +984,5 @@ private fun english() = AppText(
     save = "Save",
     deleteRecord = "Delete record",
     close = "Close",
+    language = AppLanguage.EN,
 )

@@ -28,7 +28,7 @@ class AppContainer(context: Context) {
     val shiftRepository: ShiftRepository = ShiftRepositoryImpl(database, database.shiftDao(), backupManager)
     val settingsRepository: SettingsRepository = SettingsRepositoryImpl(settingsDataStore, backupManager)
     val locationHelper = LocationHelper(appContext)
-    val notifications = NotificationHelper(appContext, settingsDataStore)
+    val notifications = NotificationHelper(appContext)
     val evaluateExit = EvaluateExitUseCase()
     val monthSummary = BuildMonthSummaryUseCase()
     val shiftCoordinator = ShiftCoordinator(

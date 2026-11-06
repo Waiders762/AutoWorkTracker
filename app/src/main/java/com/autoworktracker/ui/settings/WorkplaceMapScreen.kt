@@ -104,7 +104,7 @@ fun WorkplaceMapScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val labels = AppText.of(state.settings.language)
     val snackbar = remember { SnackbarHostState() }
-    CollectUserEvents(viewModel.events, snackbar)
+    CollectUserEvents(viewModel.events, snackbar, text = labels)
     val scope = rememberCoroutineScope()
     val hasPoint = initialLatitude != null && initialLongitude != null
     val start = remember(initialLatitude, initialLongitude) {

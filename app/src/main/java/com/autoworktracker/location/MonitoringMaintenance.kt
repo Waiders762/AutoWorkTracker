@@ -1,6 +1,7 @@
 package com.autoworktracker.location
 
 import android.content.Context
+import com.autoworktracker.domain.model.GeofenceStatus
 import com.autoworktracker.domain.repository.SettingsRepository
 
 class MonitoringMaintenance(
@@ -21,11 +22,11 @@ class MonitoringMaintenance(
     suspend fun ensureGeofence() {
         val workplace = settingsRepository.current().workplace
         if (workplace == null) {
-            geofenceManager.markInactive("Точка работы не задана")
+            geofenceManager.markInactive(GeofenceStatus.WorkplaceNotSet)
             return
         }
         if (!LocationPermissions.canMonitor(context)) {
-            geofenceManager.markInactive("Нужно разрешение «в любом режиме»")
+            geofenceManager.markInactive(GeofenceStatus.NeedBackgroundPermission)
             return
         }
         geofenceManager.register(workplace)

@@ -51,7 +51,6 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -67,6 +66,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.autoworktracker.domain.model.AppLanguage
@@ -96,7 +96,7 @@ fun DashboardScreen(viewModel: MainViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val text = AppText.of(state.language)
     val snackbarHostState = remember { SnackbarHostState() }
-    CollectUserEvents(viewModel.events, snackbarHostState, viewModel::undoDelete)
+    CollectUserEvents(viewModel.events, snackbarHostState, viewModel::undoDelete, text)
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -215,9 +215,12 @@ private fun Header(
         Text(
             text = "AutoWorkTracker",
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+            ),
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            softWrap = false,
         )
         IconButton(onClick = onCopy) {
             Icon(Icons.Filled.ContentCopy, contentDescription = text.copyReport)
@@ -235,10 +238,14 @@ private fun Header(
 private fun StatusCard(state: DashboardUiState, text: AppText) {
     val accent = if (state.onSite) Emerald else Blue
     Card(
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PulsingDot(color = accent, pulsing = state.onSite)
                 Text(state.statusTitle, style = MaterialTheme.typography.titleMedium)

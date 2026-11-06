@@ -10,7 +10,9 @@ import android.util.Log
 import com.autoworktracker.data.local.ShiftDao
 import com.autoworktracker.data.local.toDomain
 import com.autoworktracker.data.preferences.SettingsDataStore
+import com.autoworktracker.domain.model.AppLanguage
 import com.autoworktracker.domain.model.AppSettings
+import com.autoworktracker.domain.util.AppText
 import com.autoworktracker.domain.model.BackupLocations
 import com.autoworktracker.domain.model.RestoredSettings
 import com.autoworktracker.domain.model.Shift
@@ -55,20 +57,21 @@ class BackupManager(
 
     fun readBestBackup(): ByteArray? = readBestBackupLocked()
 
-    fun parse(bytes: ByteArray): ParsedBackup {
+    fun parse(bytes: ByteArray, language: AppLanguage = AppLanguage.RU): ParsedBackup {
+        val labels = AppText.of(language)
         val text = bytes.toString(Charsets.UTF_8).removePrefix("\uFEFF").trim()
         if (text.startsWith("{")) {
             val payload = try {
                 json.decodeFromString(BackupPayload.serializer(), text)
             } catch (error: Exception) {
-                throw IllegalArgumentException("Файл JSON повреждён или это не бэкап AutoWorkTracker", error)
+                throw IllegalArgumentException(labels.jsonCorrupt(), error)
             }
             val shifts = payload.shifts.mapNotNull { it.toDomain() }
             return ParsedBackup(shifts = shifts, settings = payload.toRestoredSettings())
         }
         val shifts = WorkReportParser.parse(text)
         if (shifts.isEmpty()) {
-            throw IllegalArgumentException("В файле не найдено строк вида «2 ноября: 11 часов»")
+            throw IllegalArgumentException(labels.noReportLines())
         }
         return ParsedBackup(shifts = shifts, settings = null)
     }
@@ -119,7 +122,7 @@ class BackupManager(
             settingsDataStore.setBackupStatus(
                 healthy = false,
                 epochMillis = settings.lastBackupEpochMillis,
-                error = "Не удалось записать $missing в Documents",
+                error = AppText.of(settings.language).writeFailed(missing),
             )
         }
     }

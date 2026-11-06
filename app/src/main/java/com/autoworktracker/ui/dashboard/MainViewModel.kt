@@ -117,10 +117,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun openCreate() {
+        val longHours = state.value.rules.firstOrNull { it.id == "long" }?.hours ?: 11.0
         editor.value = EditorState(
             originalDate = null,
             date = LocalDate.now(),
-            hoursText = "11",
+            hoursText = HoursFormatter.formatNumber(longHours, state.value.language),
         )
     }
 
@@ -128,7 +129,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         editor.value = EditorState(
             originalDate = shift.date,
             date = shift.date,
-            hoursText = HoursFormatter.formatNumber(shift.hours),
+            hoursText = HoursFormatter.formatNumber(shift.hours, state.value.language),
         )
     }
 
@@ -263,7 +264,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             statusTitle = statusTitle(coreState.settings.workplace != null, todayPresence, text),
             statusDetail = statusDetail(
                 distanceReading,
-                coreState.geofence.message,
+                text.geofenceStatus(coreState.geofence.status),
                 text,
                 coreState.settings.language,
             ),
@@ -273,7 +274,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             distanceLabel = distanceLabel(distanceReading, text, coreState.settings.language),
             workplaceConfigured = coreState.settings.workplace != null,
             geofenceActive = coreState.geofence.active,
-            geofenceMessage = coreState.geofence.message,
+            geofenceMessage = text.geofenceStatus(coreState.geofence.status),
             backupHealthy = coreState.settings.backupHealthy,
             backupError = coreState.settings.lastBackupError,
             editor = editorState,
