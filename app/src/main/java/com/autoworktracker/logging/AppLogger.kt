@@ -5,9 +5,9 @@ import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.ArrayDeque
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 data class AppLogEntry(
     val timestamp: String,
@@ -30,11 +30,11 @@ object AppLogger {
 
     private val lock = Any()
     private val entries = ArrayDeque<AppLogEntry>()
-    private val updatesFlow = MutableSharedFlow<AppLogEntry>(extraBufferCapacity = 128)
+    private val entriesFlow = MutableStateFlow<List<AppLogEntry>>(emptyList())
     private val stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
     private var file: File? = null
 
-    val updates: SharedFlow<AppLogEntry> = updatesFlow.asSharedFlow()
+    val entriesState: StateFlow<List<AppLogEntry>> = entriesFlow.asStateFlow()
 
     fun init(context: Context) {
         synchronized(lock) {
@@ -46,6 +46,7 @@ object AppLogger {
                     parse(line)?.let(entries::addLast)
                 }
             }
+            entriesFlow.value = entries.toList()
         }
     }
 
@@ -55,7 +56,7 @@ object AppLogger {
             category = category,
             message = message,
         )
-        val snapshot = synchronized(lock) {
+        synchronized(lock) {
             entries.addLast(entry)
             while (entries.size > MAX_ENTRIES) entries.removeFirst()
             file?.let { target ->
@@ -67,10 +68,8 @@ object AppLogger {
                     }
                 }
             }
-            entries.toList()
+            entriesFlow.value = entries.toList()
         }
-        updatesFlow.tryEmit(entry)
-        if (snapshot.size > MAX_ENTRIES) Unit
     }
 
     fun nav(screen: String) = log(NAV, "Open $screen")
@@ -97,6 +96,7 @@ object AppLogger {
         synchronized(lock) {
             entries.clear()
             runCatching { file?.writeText("") }
+            entriesFlow.value = emptyList()
         }
         log(UI, "Log buffer cleared")
     }

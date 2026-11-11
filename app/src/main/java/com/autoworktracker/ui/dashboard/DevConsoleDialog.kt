@@ -60,15 +60,12 @@ fun DevConsoleDialog(onDismiss: () -> Unit) {
     var filter by remember { mutableStateOf(LogFilter.ALL) }
     var tab by remember { mutableIntStateOf(0) }
     var follow by remember { mutableStateOf(true) }
-    var revision by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
-    val logs = remember(revision, query, filter) {
-        AppLogger.snapshot().filter { entry ->
+    val allLogs by AppLogger.entriesState.collectAsStateWithLifecycle()
+    val logs = remember(allLogs, query, filter) {
+        allLogs.filter { entry ->
             filter.matches(entry) && (query.isBlank() || entry.line().contains(query, ignoreCase = true))
         }
-    }
-    LaunchedEffect(Unit) {
-        AppLogger.updates.collect { revision++ }
     }
     LaunchedEffect(logs.size, follow) {
         if (follow && logs.isNotEmpty()) listState.animateScrollToItem(logs.lastIndex)
@@ -128,7 +125,6 @@ fun DevConsoleDialog(onDismiss: () -> Unit) {
                         }, modifier = Modifier.weight(1f)) { Text("Скопировать всё") }
                         OutlinedButton(onClick = {
                             AppLogger.clear()
-                            revision++
                         }, modifier = Modifier.weight(1f)) { Text("Очистить логи") }
                     }
                 } else {
