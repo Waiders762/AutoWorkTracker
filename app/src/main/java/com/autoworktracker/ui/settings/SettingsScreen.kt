@@ -1,9 +1,15 @@
 package com.autoworktracker.ui.settings
 
 import android.Manifest
+import android.app.AlarmManager
+import android.app.KeyguardManager
 import android.content.Intent
-import android.net.Uri
+import android.hardware.Sensor
+import android.hardware.SensorManager
+import android.location.LocationManager
 import android.os.Build
+import android.os.PowerManager
+import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -42,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -51,6 +58,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +77,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.autoworktracker.domain.model.AppLanguage
+import com.autoworktracker.domain.model.AppSettings
 import com.autoworktracker.domain.model.ShiftRule
 import com.autoworktracker.domain.model.ThemeMode
 import com.autoworktracker.domain.model.Workplace
@@ -281,6 +290,7 @@ fun SettingsScreen(
                     Text(text.addRule)
                 }
             }
+            LunchControlCard(state = state, text = text, viewModel = viewModel)
             SectionCard(title = text.paySection) {
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -670,3 +680,146 @@ private fun TimeDialog(
 }
 
 private fun formatCoord(value: Double): String = String.format(Locale.US, "%.6f", value)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LunchControlCard(
+    state: SettingsUiState,
+    text: AppText,
+    viewModel: SettingsViewModel,
+) {
+    val settings = state.settings
+    var hours by rememberSaveable(settings.noBreakHours, settings.language) {
+        mutableStateOf(HoursFormatter.formatNumber(settings.noBreakHours, settings.language))
+    }
+    var unlocked by remember(settings.lunchMaxUnlockedMinutes) {
+        mutableFloatStateOf(settings.lunchMaxUnlockedMinutes.toFloat())
+    }
+    var motion by remember(settings.lunchMinActiveMinutes) {
+        mutableFloatStateOf(settings.lunchMinActiveMinutes.toFloat())
+    }
+    var picking by rememberSaveable { mutableStateOf<String?>(null) }
+    SectionCard(title = text.lunchCardTitle()) {
+        SwitchRow(
+            title = text.lunchAutoSwitch(),
+            checked = settings.autoDetectLunchBreak,
+            onChecked = viewModel::setAutoDetectLunchBreak,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { picking = "start" }, modifier = Modifier.weight(1f)) {
+                Text(text.fromTime(RussianDateFormatter.formatTime(settings.lunchWindowStart)))
+            }
+            OutlinedButton(onClick = { picking = "end" }, modifier = Modifier.weight(1f)) {
+                Text(text.untilTime(RussianDateFormatter.formatTime(settings.lunchWindowEnd)))
+            }
+        }
+        Text(text.lunchHoursLabel(), style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(11.5, 12.0).forEach { preset ->
+                val label = HoursFormatter.formatCompact(preset, settings.language)
+                val selected = kotlin.math.abs((hours.replace(',', '.').toDoubleOrNull() ?: 0.0) - preset) < 0.001
+                FilterChip(
+                    selected = selected,
+                    onClick = {
+                        hours = HoursFormatter.formatNumber(preset, settings.language)
+                        viewModel.setNoBreakHours(preset)
+                    },
+                    label = { Text(label) },
+                )
+            }
+        }
+        OutlinedTextField(
+            value = hours,
+            onValueChange = { hours = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(text.hoursLabel) },
+            singleLine = true,
+        )
+        Button(
+            onClick = {
+                val value = hours.replace(',', '.').toDoubleOrNull()
+                if (value != null) viewModel.setNoBreakHours(value)
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text(text.save) }
+        Text(text.lunchUnlockedLabel(unlocked.toInt()), style = MaterialTheme.typography.titleMedium)
+        Slider(
+            value = unlocked,
+            onValueChange = { unlocked = it.toInt().coerceIn(1, 15).toFloat() },
+            onValueChangeFinished = { viewModel.setLunchMaxUnlockedMinutes(unlocked.toInt()) },
+            valueRange = 1f..15f,
+            steps = 13,
+        )
+        Text(text.lunchUnlockedHint(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text.lunchMotionLabel(motion.toInt()), style = MaterialTheme.typography.titleMedium)
+        Slider(
+            value = motion,
+            onValueChange = { motion = it.toInt().coerceIn(5, 30).toFloat() },
+            onValueChangeFinished = { viewModel.setLunchMinActiveMinutes(motion.toInt()) },
+            valueRange = 5f..30f,
+            steps = 24,
+        )
+        Text(text.lunchMotionHint(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        SensorCheck(text)
+    }
+    val target = picking
+    if (target != null) {
+        TimeDialog(
+            text = text,
+            initial = if (target == "start") settings.lunchWindowStart else settings.lunchWindowEnd,
+            onDismiss = { picking = null },
+            onConfirm = { time ->
+                picking = null
+                if (target == "start") viewModel.setLunchWindow(time, null) else viewModel.setLunchWindow(null, time)
+            },
+        )
+    }
+}
+
+@Composable
+private fun SensorCheck(text: AppText) {
+    val context = LocalContext.current
+    val probe = remember { MotionProbe(context) }
+    var testing by remember { mutableStateOf(false) }
+    val delta by probe.delta.collectAsStateWithLifecycle()
+    val moving by probe.moving.collectAsStateWithLifecycle()
+    DisposableEffect(testing) {
+        if (testing) probe.start()
+        onDispose { if (testing) probe.stop() }
+    }
+    Text(text.sensorCheckTitle(), style = MaterialTheme.typography.titleMedium)
+    Text(text.sensorAccelerometer(probe.available))
+    Text(text.sensorScreen(screenUnlocked(context)))
+    Text(text.sensorAlarm(exactAlarmsAllowed(context)))
+    Text(text.sensorGps(gpsReady(context)))
+    OutlinedButton(onClick = { testing = !testing }, modifier = Modifier.fillMaxWidth()) {
+        Text(text.sensorTestButton())
+    }
+    if (testing) {
+        Text(text.sensorDelta(String.format(Locale.US, "%.2f", delta)))
+        Text(
+            if (moving) text.sensorMoving() else text.sensorStill(),
+            color = if (moving) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.titleMedium,
+        )
+    }
+}
+
+private fun screenUnlocked(context: android.content.Context): Boolean {
+    val power = context.getSystemService(PowerManager::class.java)
+    val keyguard = context.getSystemService(KeyguardManager::class.java)
+    return power.isInteractive && !keyguard.isDeviceLocked
+}
+
+private fun exactAlarmsAllowed(context: android.content.Context): Boolean {
+    val alarms = context.getSystemService(AlarmManager::class.java)
+    return Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms()
+}
+
+private fun gpsReady(context: android.content.Context): Boolean {
+    val manager = context.getSystemService(LocationManager::class.java)
+    val enabled = runCatching { manager.isLocationEnabled }.getOrDefault(false)
+    val permission = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
+        android.content.pm.PackageManager.PERMISSION_GRANTED
+    return enabled && permission
+}

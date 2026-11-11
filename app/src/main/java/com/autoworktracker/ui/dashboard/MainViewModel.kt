@@ -18,6 +18,7 @@ import com.autoworktracker.domain.util.HoursFormatter
 import com.autoworktracker.domain.util.RussianDateFormatter
 import com.autoworktracker.domain.util.WorkReportFormatter
 import com.autoworktracker.location.LocationPermissions
+import com.autoworktracker.logging.AppLogger
 import com.autoworktracker.ui.common.UserEvent
 import java.time.Instant
 import java.time.LocalDate
@@ -85,10 +86,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun shiftMonth(delta: Int) {
-        month.value = month.value.plusMonths(delta.toLong())
+        val next = month.value.plusMonths(delta.toLong())
+        AppLogger.ui("Month ${month.value} -> $next")
+        month.value = next
     }
 
     fun refreshDistance() {
+        AppLogger.ui("Refresh GPS distance")
         viewModelScope.launch {
             val workplace = container.settingsRepository.current().workplace
             if (workplace == null) {
@@ -190,6 +194,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun toggleNoBreak() {
+        viewModelScope.launch {
+            val today = java.time.LocalDate.now()
+            val presence = container.settingsRepository.current().presence
+            val current = if (presence.isForDay(today, java.time.ZoneId.systemDefault())) {
+                presence.noAfternoonBreakToday
+            } else {
+                false
+            }
+            container.lunchStatus.setNoAfternoonBreak(!current, "dashboard")
+        }
+    }
+
     fun copyMonth() {
         viewModelScope.launch {
             val language = container.settingsRepository.current().language
@@ -277,6 +294,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             geofenceMessage = text.geofenceStatus(coreState.geofence.status),
             backupHealthy = coreState.settings.backupHealthy,
             backupError = coreState.settings.lastBackupError,
+            noAfternoonBreak = todayPresence.noAfternoonBreakToday,
+            lunchStart = com.autoworktracker.domain.util.RussianDateFormatter.formatTime(coreState.settings.lunchWindowStart),
+            lunchEnd = com.autoworktracker.domain.util.RussianDateFormatter.formatTime(coreState.settings.lunchWindowEnd),
+            noBreakHours = coreState.settings.noBreakHours,
+            longShiftHours = coreState.settings.rules.firstOrNull { it.id == "long" }?.hours ?: 11.0,
             editor = editorState,
             offerRestore = offerRestore,
         )

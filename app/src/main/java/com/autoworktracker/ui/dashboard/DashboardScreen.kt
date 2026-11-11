@@ -11,7 +11,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +42,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,7 +59,10 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -74,6 +81,8 @@ import com.autoworktracker.domain.model.MonthSummary
 import com.autoworktracker.domain.model.Shift
 import com.autoworktracker.domain.util.AppText
 import com.autoworktracker.domain.util.HoursFormatter
+import com.autoworktracker.logging.AppLogger
+import android.os.SystemClock
 import com.autoworktracker.domain.util.MoneyFormatter
 import com.autoworktracker.domain.util.RussianDateFormatter
 import com.autoworktracker.ui.common.CollectUserEvents
@@ -96,6 +105,26 @@ fun DashboardScreen(viewModel: MainViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val text = AppText.of(state.language)
     val snackbarHostState = remember { SnackbarHostState() }
+    var secretStep by remember { mutableIntStateOf(0) }
+    var secretAt by remember { mutableStateOf(0L) }
+    var backupTaps by remember { mutableIntStateOf(0) }
+    var backupTapAt by remember { mutableStateOf(0L) }
+    var showDevConsole by remember { mutableStateOf(false) }
+    fun resetSecret() {
+        secretStep = 0
+        backupTaps = 0
+    }
+    fun secretFresh(): Boolean {
+        if (secretStep != 0 && SystemClock.elapsedRealtime() - secretAt > 6_000L) {
+            resetSecret()
+            return false
+        }
+        return true
+    }
+    DisposableEffect(Unit) {
+        AppLogger.nav("Dashboard")
+        onDispose { }
+    }
     CollectUserEvents(viewModel.events, snackbarHostState, viewModel::undoDelete, text)
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -132,12 +161,64 @@ fun DashboardScreen(viewModel: MainViewModel = viewModel()) {
                 item {
                     Header(
                         text = text,
-                        onRefresh = viewModel::refreshDistance,
-                        onCopy = viewModel::copyMonth,
-                        onShare = viewModel::shareReport,
+                        onRefresh = {
+                            AppLogger.ui("Tap refresh distance")
+                            viewModel.refreshDistance()
+                        },
+                        onCopy = {
+                            AppLogger.ui("Tap copy month")
+                            viewModel.copyMonth()
+                        },
+                        onShare = {
+                            AppLogger.ui("Tap share report")
+                            viewModel.shareReport()
+                        },
+                        onTitleLongClick = {
+                            if (!secretFresh() || secretStep != 2) {
+                                resetSecret()
+                            } else {
+                                resetSecret()
+                                showDevConsole = true
+                                AppLogger.nav("DevConsole")
+                            }
+                        },
                     )
                 }
-                item { StatusCard(state, text) }
+                item {
+                    StatusCard(
+                        state = state,
+                        text = text,
+                        onToggleLunch = {
+                            AppLogger.ui("Tap lunch chip noBreak=${state.noAfternoonBreak}")
+                            viewModel.toggleNoBreak()
+                        },
+                        onBackupClick = {
+                            if (!secretFresh() || secretStep != 1) {
+                                resetSecret()
+                            } else {
+                                val now = SystemClock.elapsedRealtime()
+                                if (backupTaps == 0 || now - backupTapAt > 700L) {
+                                    backupTaps = 1
+                                    backupTapAt = now
+                                    secretAt = now
+                                } else {
+                                    backupTaps = 0
+                                    secretStep = 2
+                                    secretAt = now
+                                }
+                            }
+                        },
+                        onEcoLongClick = {
+                            if (!secretFresh() || secretStep != 0) {
+                                resetSecret()
+                            } else {
+                                secretStep = 1
+                                secretAt = SystemClock.elapsedRealtime()
+                                backupTaps = 0
+                            }
+                        },
+                    )
+                }
                 item {
                     MonthSwitcher(
                         title = state.monthTitle,
@@ -184,6 +265,9 @@ fun DashboardScreen(viewModel: MainViewModel = viewModel()) {
             onDismiss = viewModel::dismissEditor,
         )
     }
+    if (showDevConsole) {
+        DevConsoleDialog(onDismiss = { showDevConsole = false })
+    }
     if (state.offerRestore) {
         AlertDialog(
             onDismissRequest = viewModel::dismissRestoreOffer,
@@ -201,12 +285,14 @@ fun DashboardScreen(viewModel: MainViewModel = viewModel()) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Header(
     text: AppText,
     onRefresh: () -> Unit,
     onCopy: () -> Unit,
     onShare: () -> Unit,
+    onTitleLongClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -214,7 +300,9 @@ private fun Header(
     ) {
         Text(
             text = "AutoWorkTracker",
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .combinedClickable(onClick = {}, onLongClick = onTitleLongClick),
             style = MaterialTheme.typography.titleLarge.copy(
                 fontWeight = FontWeight.Bold,
                 fontSize = 22.sp,
@@ -234,8 +322,15 @@ private fun Header(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-private fun StatusCard(state: DashboardUiState, text: AppText) {
+private fun StatusCard(
+    state: DashboardUiState,
+    text: AppText,
+    onToggleLunch: () -> Unit,
+    onBackupClick: () -> Unit,
+    onEcoLongClick: () -> Unit,
+) {
     val accent = if (state.onSite) Emerald else Blue
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -263,13 +358,34 @@ private fun StatusCard(state: DashboardUiState, text: AppText) {
                     text = if (state.backupHealthy) text.backupActive else text.backupWaiting,
                     container = if (state.backupHealthy) Emerald.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surface,
                     content = if (state.backupHealthy) Emerald else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.combinedClickable(onClick = onBackupClick, onLongClick = {}),
                 )
                 MetaPill(
                     text = if (state.geofenceActive) text.ecoMode else text.geofenceOff,
                     container = if (state.geofenceActive) Blue.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surface,
                     content = if (state.geofenceActive) Blue else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.combinedClickable(onClick = {}, onLongClick = onEcoLongClick),
                 )
             }
+            FilterChip(
+                selected = state.noAfternoonBreak,
+                onClick = onToggleLunch,
+                label = {
+                    val longHours = HoursFormatter.formatCompact(state.longShiftHours, state.language)
+                    val noBreakHours = HoursFormatter.formatCompact(state.noBreakHours, state.language)
+                    Text(
+                        if (state.noAfternoonBreak) {
+                            text.chipNoLunch(noBreakHours)
+                        } else {
+                            text.chipHadLunch(state.lunchStart, state.lunchEnd, longHours)
+                        },
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Emerald,
+                    selectedLabelColor = Ink,
+                ),
+            )
             state.backupError?.let { error ->
                 Text(
                     text = error,
@@ -289,12 +405,17 @@ private fun StatusCard(state: DashboardUiState, text: AppText) {
 }
 
 @Composable
-private fun MetaPill(text: String, container: Color, content: Color) {
+private fun MetaPill(
+    text: String,
+    container: Color,
+    content: Color,
+    modifier: Modifier = Modifier,
+) {
     Text(
         text = text,
         color = content,
         style = MaterialTheme.typography.labelMedium,
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(999.dp))
             .background(container)
             .padding(horizontal = 10.dp, vertical = 6.dp),

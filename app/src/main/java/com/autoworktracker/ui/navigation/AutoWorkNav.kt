@@ -10,6 +10,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import com.autoworktracker.logging.AppLogger
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -59,6 +61,13 @@ fun AutoWorkNav() {
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination
     val onMap = current?.route?.startsWith("workplace-map") == true
+    LaunchedEffect(current?.route) {
+        when {
+            onMap -> AppLogger.nav("WorkplaceMap")
+            current?.route == "settings" -> AppLogger.nav("Settings")
+            current?.route == "dashboard" -> AppLogger.nav("Dashboard")
+        }
+    }
     Scaffold(
         bottomBar = {
             if (!onMap) NavigationBar {

@@ -12,7 +12,9 @@ import com.autoworktracker.data.local.toDomain
 import com.autoworktracker.data.preferences.SettingsDataStore
 import com.autoworktracker.domain.model.AppLanguage
 import com.autoworktracker.domain.model.AppSettings
+import com.autoworktracker.domain.model.toMinuteOfDay
 import com.autoworktracker.domain.util.AppText
+import com.autoworktracker.logging.AppLogger
 import com.autoworktracker.domain.model.BackupLocations
 import com.autoworktracker.domain.model.RestoredSettings
 import com.autoworktracker.domain.model.Shift
@@ -98,6 +100,14 @@ class BackupManager(
             lastEntryEpochMillis = settings.presence.lastEntryEpochMillis,
             dwellConfirmed = settings.presence.dwellConfirmed,
             sessionConfirmed = settings.presence.sessionConfirmed,
+            noAfternoonBreakToday = settings.presence.noAfternoonBreakToday,
+            breakAutoDetected = settings.presence.breakAutoDetected,
+            autoDetectLunchBreak = settings.autoDetectLunchBreak,
+            lunchWindowStartMinutes = settings.lunchWindowStart.toMinuteOfDay(),
+            lunchWindowEndMinutes = settings.lunchWindowEnd.toMinuteOfDay(),
+            noBreakHours = settings.noBreakHours,
+            lunchMaxUnlockedMinutes = settings.lunchMaxUnlockedMinutes,
+            lunchMinActiveMinutes = settings.lunchMinActiveMinutes,
             shifts = shifts.map { it.toStored() },
         )
         val jsonText = json.encodeToString(BackupPayload.serializer(), payload)
@@ -125,6 +135,7 @@ class BackupManager(
                 error = AppText.of(settings.language).writeFailed(missing),
             )
         }
+        AppLogger.backup("Mirror textOk=$textOk jsonOk=$jsonOk shifts=${shifts.size}")
     }
 
     private fun readBestBackupLocked(): ByteArray? {

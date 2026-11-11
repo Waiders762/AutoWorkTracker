@@ -56,6 +56,14 @@ data class BackupPayload(
     val lastEntryEpochMillis: Long? = null,
     val dwellConfirmed: Boolean = false,
     val sessionConfirmed: Boolean = false,
+    val noAfternoonBreakToday: Boolean = false,
+    val breakAutoDetected: Boolean = false,
+    val autoDetectLunchBreak: Boolean = true,
+    val lunchWindowStartMinutes: Int = 14 * 60,
+    val lunchWindowEndMinutes: Int = 14 * 60 + 30,
+    val noBreakHours: Double = 11.5,
+    val lunchMaxUnlockedMinutes: Int = 4,
+    val lunchMinActiveMinutes: Int = 18,
     val shifts: List<StoredShift> = emptyList(),
 )
 
@@ -137,6 +145,14 @@ fun BackupPayload.toRestoredSettings(): RestoredSettings {
             lastEntryEpochMillis = lastEntryEpochMillis,
             dwellConfirmed = dwellConfirmed,
             sessionConfirmed = sessionConfirmed,
+            noAfternoonBreakToday = noAfternoonBreakToday,
+            breakAutoDetected = breakAutoDetected,
         ),
+        autoDetectLunchBreak = autoDetectLunchBreak,
+        lunchWindowStart = lunchWindowStartMinutes.toLocalTime(),
+        lunchWindowEnd = lunchWindowEndMinutes.toLocalTime(),
+        noBreakHours = noBreakHours,
+        lunchMaxUnlockedMinutes = lunchMaxUnlockedMinutes,
+        lunchMinActiveMinutes = lunchMinActiveMinutes,
     )
 }

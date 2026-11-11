@@ -4,6 +4,8 @@ import com.autoworktracker.domain.model.Shift
 import com.autoworktracker.domain.model.ShiftRule
 import com.autoworktracker.domain.model.ShiftSource
 import com.autoworktracker.domain.usecase.BuildMonthSummaryUseCase
+import com.autoworktracker.domain.usecase.EveningShiftHours
+import com.autoworktracker.domain.usecase.LunchVerdict
 import com.autoworktracker.domain.usecase.EvaluateExitUseCase
 import com.autoworktracker.domain.usecase.ExitDecision
 import com.autoworktracker.domain.util.HoursFormatter
@@ -128,6 +130,47 @@ class HoursAndRulesTest {
         )
         assertEquals(2, swapped.byRule.first { it.rule.id == "long" }.count)
         assertEquals(0, swapped.otherCount)
+    }
+
+    @Test
+    fun noBreakEveningUsesConfiguredLongHours() {
+        val long = rules.first { it.id == "long" }
+        assertEquals(11.0, EveningShiftHours.resolve(long, noAfternoonBreak = false, noBreakHours = 11.5), 0.001)
+        assertEquals(11.5, EveningShiftHours.resolve(long, noAfternoonBreak = true, noBreakHours = 11.5), 0.001)
+        val custom = long.copy(hours = 12.0)
+        assertEquals(11.5, EveningShiftHours.resolve(custom, noAfternoonBreak = true, noBreakHours = 11.5), 0.001)
+        val short = rules.first { it.id == "short" }
+        assertEquals(7.5, EveningShiftHours.resolve(short, noAfternoonBreak = true, noBreakHours = 11.5), 0.001)
+    }
+
+    @Test
+    fun lunchDetectorTreatsQuietUnlockedPhoneAsABreak() {
+        assertTrue(
+            LunchVerdict.workedWithoutBreak(
+                unlockedSeconds = 180,
+                activeMinutes = 18,
+                maxUnlockedMinutes = 4,
+                minActiveMinutes = 18,
+            ),
+        )
+        assertFalse(
+            LunchVerdict.workedWithoutBreak(
+                unlockedSeconds = 240,
+                activeMinutes = 25,
+                maxUnlockedMinutes = 4,
+                minActiveMinutes = 18,
+            ),
+        )
+        assertFalse(
+            LunchVerdict.workedWithoutBreak(
+                unlockedSeconds = 30,
+                activeMinutes = 17,
+                maxUnlockedMinutes = 4,
+                minActiveMinutes = 18,
+            ),
+        )
+        assertTrue(LunchVerdict.minuteWasActive(averageDelta = 0.2f, peakDelta = 0.8f))
+        assertFalse(LunchVerdict.minuteWasActive(averageDelta = 0.2f, peakDelta = 0.4f))
     }
 
     @Test

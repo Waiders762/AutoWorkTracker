@@ -11,6 +11,7 @@ import com.autoworktracker.domain.model.ThemeMode
 import com.autoworktracker.domain.model.Workplace
 import com.autoworktracker.domain.repository.SettingsRepository
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
 
@@ -59,6 +60,31 @@ class SettingsRepositoryImpl(
 
     override suspend fun setDynamicColor(enabled: Boolean) {
         settingsDataStore.setDynamicColor(enabled)
+        backupManager.mirror()
+    }
+
+    override suspend fun setAutoDetectLunchBreak(enabled: Boolean) {
+        settingsDataStore.setAutoDetectLunchBreak(enabled)
+        backupManager.mirror()
+    }
+
+    override suspend fun setLunchWindow(start: LocalTime?, end: LocalTime?) {
+        settingsDataStore.setLunchWindow(start, end)
+        backupManager.mirror()
+    }
+
+    override suspend fun setNoBreakHours(hours: Double) {
+        settingsDataStore.setNoBreakHours(hours)
+        backupManager.mirror()
+    }
+
+    override suspend fun setLunchMaxUnlockedMinutes(minutes: Int) {
+        settingsDataStore.setLunchMaxUnlockedMinutes(minutes)
+        backupManager.mirror()
+    }
+
+    override suspend fun setLunchMinActiveMinutes(minutes: Int) {
+        settingsDataStore.setLunchMinActiveMinutes(minutes)
         backupManager.mirror()
     }
 

@@ -9,6 +9,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.autoworktracker.AutoWorkTrackerApp
+import com.autoworktracker.logging.AppLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,12 +17,28 @@ import kotlinx.coroutines.launch
 
 class ShiftAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val ruleId = intent.getStringExtra(ShiftCheckWorker.KEY_RULE_ID)
-        if (ruleId.isNullOrBlank()) return
         val pending = goAsync()
         val appContext = context.applicationContext
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
+                val app = appContext as AutoWorkTrackerApp
+                when (intent.action) {
+                    ACTION_LUNCH_START -> {
+                        AppLogger.alarm("Lunch start alarm fired")
+                        app.container.lunchDetector.startWindow()
+                        app.container.alarmScheduler.reschedule(app.container.settingsRepository.current())
+                        return@launch
+                    }
+                    ACTION_LUNCH_END -> {
+                        AppLogger.alarm("Lunch end alarm fired")
+                        app.container.lunchDetector.requestFinish()
+                        app.container.alarmScheduler.reschedule(app.container.settingsRepository.current())
+                        return@launch
+                    }
+                }
+                val ruleId = intent.getStringExtra(ShiftCheckWorker.KEY_RULE_ID)
+                if (ruleId.isNullOrBlank()) return@launch
+                AppLogger.alarm("Rule alarm fired id=$ruleId")
                 val request = OneTimeWorkRequestBuilder<ShiftCheckWorker>()
                     .setInputData(
                         workDataOf(
@@ -35,10 +52,8 @@ class ShiftAlarmReceiver : BroadcastReceiver() {
                     ExistingWorkPolicy.REPLACE,
                     request,
                 )
-                val app = appContext as AutoWorkTrackerApp
                 app.container.shiftCoordinator.onSafetyCheck(ruleId)
-                val rules = app.container.settingsRepository.current().rules
-                app.container.alarmScheduler.reschedule(rules)
+                app.container.alarmScheduler.reschedule(app.container.settingsRepository.current())
             } catch (error: Exception) {
                 Log.e(TAG, "Alarm shift check failed", error)
             } finally {
@@ -47,7 +62,9 @@ class ShiftAlarmReceiver : BroadcastReceiver() {
         }
     }
 
-    private companion object {
-        const val TAG = "AutoWork"
+    companion object {
+        const val ACTION_LUNCH_START = "com.autoworktracker.action.LUNCH_START"
+        const val ACTION_LUNCH_END = "com.autoworktracker.action.LUNCH_END"
+        private const val TAG = "AutoWork"
     }
 }

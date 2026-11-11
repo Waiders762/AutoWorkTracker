@@ -8,6 +8,7 @@ import com.autoworktracker.data.local.toDomain
 import com.autoworktracker.data.local.toEntity
 import com.autoworktracker.domain.model.Shift
 import com.autoworktracker.domain.repository.ShiftRepository
+import com.autoworktracker.logging.AppLogger
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.flow.Flow
@@ -36,11 +37,13 @@ class ShiftRepositoryImpl(
 
     override suspend fun upsert(shift: Shift) {
         database.withTransaction { writeShift(shift) }
+        AppLogger.backup("Upsert ${shift.date} hours=${shift.hours} source=${shift.source}")
         backupManager.mirror()
     }
 
     override suspend fun deleteByDate(date: LocalDate) {
         shiftDao.deleteByDay(date.toEpochDay())
+        AppLogger.backup("Delete $date")
         backupManager.mirror()
     }
 

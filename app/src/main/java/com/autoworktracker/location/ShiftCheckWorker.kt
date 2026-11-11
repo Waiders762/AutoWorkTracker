@@ -17,8 +17,7 @@ class ShiftCheckWorker(
         return try {
             app.container.shiftCoordinator.onSafetyCheck(ruleId)
             if (inputData.getString(KEY_MODE) == MODE_FALLBACK) {
-                val rules = app.container.settingsRepository.current().rules
-                app.container.alarmScheduler.reschedule(rules)
+                app.container.alarmScheduler.reschedule(app.container.settingsRepository.current())
             }
             Result.success()
         } catch (error: Exception) {

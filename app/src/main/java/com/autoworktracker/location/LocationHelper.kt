@@ -12,6 +12,7 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.autoworktracker.logging.AppLogger
 import kotlin.coroutines.resume
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.awaitClose
@@ -55,7 +56,11 @@ class LocationHelper(context: Context) {
         timeoutMs: Long,
         maxUpdateAgeMillis: Long,
     ): Location? {
-        if (!LocationPermissions.hasForeground(appContext)) return null
+        if (!LocationPermissions.hasForeground(appContext)) {
+            AppLogger.gps("Fix skipped: no foreground permission priority=$priority")
+            return null
+        }
+        AppLogger.gps("Start fix priority=$priority timeoutMs=$timeoutMs")
         val request = CurrentLocationRequest.Builder()
             .setPriority(priority)
             .setGranularity(granularity)
@@ -63,7 +68,7 @@ class LocationHelper(context: Context) {
             .setMaxUpdateAgeMillis(maxUpdateAgeMillis)
             .build()
         val cancellation = CancellationTokenSource()
-        return try {
+        val result: Location? = try {
             withTimeout(timeoutMs + 1_000L) {
                 suspendCancellableCoroutine { continuation ->
                     continuation.invokeOnCancellation { cancellation.cancel() }
@@ -82,6 +87,12 @@ class LocationHelper(context: Context) {
         } catch (_: SecurityException) {
             null
         }
+        if (result == null) {
+            AppLogger.gps("Fix timeout or empty priority=$priority")
+        } else {
+            AppLogger.gps("Fix lat=${result.latitude} lng=${result.longitude} accuracy=${result.accuracy}")
+        }
+        return result
     }
 
     @SuppressLint("MissingPermission")

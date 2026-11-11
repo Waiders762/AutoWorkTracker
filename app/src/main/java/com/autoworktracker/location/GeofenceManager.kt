@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import com.autoworktracker.domain.model.GeofenceStatus
 import com.autoworktracker.domain.model.Workplace
+import com.autoworktracker.logging.AppLogger
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.api.ApiException
@@ -35,6 +36,7 @@ class GeofenceManager(private val context: Context) {
 
     fun markInactive(status: GeofenceStatus) {
         mutableRegistration.value = GeofenceRegistration(active = false, status = status)
+        AppLogger.geofence("Inactive status=$status")
     }
 
     suspend fun register(workplace: Workplace) {
@@ -84,12 +86,14 @@ class GeofenceManager(private val context: Context) {
                 status = GeofenceStatus.Active(safe.radiusMeters.toInt()),
             )
             Log.i(TAG, "Geofence registered")
+            AppLogger.geofence("Registered active radius=${safe.radiusMeters.toInt()}")
         } catch (error: TimeoutCancellationException) {
             mutableRegistration.value = GeofenceRegistration(
                 active = false,
                 status = GeofenceStatus.Timeout,
             )
             Log.e(TAG, "Geofence registration timed out", error)
+            AppLogger.geofence("Registration timeout")
         } catch (error: Exception) {
             val code = (error as? ApiException)?.statusCode
             mutableRegistration.value = GeofenceRegistration(
@@ -97,6 +101,7 @@ class GeofenceManager(private val context: Context) {
                 status = GeofenceStatus.Error(code),
             )
             Log.e(TAG, "Geofence registration failed", error)
+            AppLogger.geofence("Registration failed code=$code")
         }
     }
 

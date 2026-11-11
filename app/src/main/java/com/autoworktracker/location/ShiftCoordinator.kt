@@ -6,8 +6,11 @@ import com.autoworktracker.domain.model.Shift
 import com.autoworktracker.domain.model.ShiftSource
 import com.autoworktracker.domain.repository.SettingsRepository
 import com.autoworktracker.domain.repository.ShiftRepository
+import com.autoworktracker.domain.model.AppSettings
+import com.autoworktracker.domain.usecase.EveningShiftHours
 import com.autoworktracker.domain.usecase.EvaluateExitUseCase
 import com.autoworktracker.domain.usecase.ExitDecision
+import com.autoworktracker.logging.AppLogger
 import com.autoworktracker.domain.model.AppLanguage
 import com.autoworktracker.domain.util.AppText
 import com.autoworktracker.domain.util.RussianDateFormatter
@@ -45,7 +48,14 @@ class ShiftCoordinator(
         )
         settingsRepository.updatePresence(updated)
         val clock = RussianDateFormatter.formatTime(epochMillis.toLocalTime(zone))
-        notifications.notifyPresence(text.onShiftTitle(), text.onShiftBody(clock))
+        AppLogger.geofence("ENTER onSite=true")
+        notifications.notifyPresence(
+            text.onShiftTitle(),
+            text.onShiftBody(clock),
+            settings.language,
+            settings.noBreakHours,
+            longHours(settings),
+        )
     }
 
     suspend fun onDwell(epochMillis: Long = System.currentTimeMillis()) = mutex.withLock {
@@ -64,7 +74,14 @@ class ShiftCoordinator(
         )
         settingsRepository.updatePresence(updated)
         if (!presence.dwellConfirmed) {
-            notifications.notifyPresence(text.dwellTitle(), text.dwellBody())
+            AppLogger.geofence("DWELL confirmed")
+            notifications.notifyPresence(
+                text.dwellTitle(),
+                text.dwellBody(),
+                settings.language,
+                settings.noBreakHours,
+                longHours(settings),
+            )
         }
     }
 
@@ -108,7 +125,14 @@ class ShiftCoordinator(
         val realVisit = presence.dwellConfirmed || stayedMs >= LOITER_MS
         if (!realVisit) {
             settingsRepository.updatePresence(presence.copy(onSite = false, dwellConfirmed = false))
-            notifications.notifyPresence(text.shortVisitTitle(), text.shortVisitBody())
+            AppLogger.geofence("EXIT short visit, hours not saved")
+            notifications.notifyPresence(
+                text.shortVisitTitle(),
+                text.shortVisitBody(),
+                settings.language,
+                settings.noBreakHours,
+                longHours(settings),
+            )
             return
         }
         val existing = shiftRepository.getByDate(today)
@@ -120,22 +144,36 @@ class ShiftCoordinator(
                 overwriteEnabled = settings.overwriteShortWithLong,
             )
         ) {
-            is ExitDecision.Apply -> saveShift(
-                today,
-                exitTime,
-                presence,
-                existing,
-                decision.rule.hours,
-                source,
-                epochMillis,
-                settings.language,
-            )
-            is ExitDecision.KeepExisting -> Unit
+            is ExitDecision.Apply -> {
+                val hours = EveningShiftHours.resolve(
+                    rule = decision.rule,
+                    noAfternoonBreak = presence.noAfternoonBreakToday,
+                    noBreakHours = settings.noBreakHours,
+                )
+                AppLogger.geofence(
+                    "EXIT apply rule=${decision.rule.id} hours=$hours noBreak=${presence.noAfternoonBreakToday}",
+                )
+                saveShift(
+                    today,
+                    exitTime,
+                    presence,
+                    existing,
+                    hours,
+                    source,
+                    epochMillis,
+                    settings.language,
+                )
+            }
+            is ExitDecision.KeepExisting -> AppLogger.geofence("EXIT keep existing hours")
             ExitDecision.OutsideWindow -> {
+                AppLogger.geofence("EXIT outside window existing=${existing != null}")
                 if (existing == null) {
                     notifications.notifyPresence(
                         text.outsideWindowTitle(),
                         text.outsideWindowBody(RussianDateFormatter.formatTime(exitTime)),
+                        settings.language,
+                        settings.noBreakHours,
+                        longHours(settings),
                     )
                 }
             }
@@ -176,6 +214,10 @@ class ShiftCoordinator(
         val changed = existing == null || abs(existing.hours - shift.hours) > 0.001
         shiftRepository.upsert(shift)
         if (changed) notifications.notifyShiftRecorded(shift, language)
+    }
+
+    private fun longHours(settings: AppSettings): Double {
+        return settings.rules.firstOrNull { it.id == "long" }?.hours ?: 11.0
     }
 
     private fun effectivePresence(presence: PresenceState, epochMillis: Long, zone: ZoneId): PresenceState {

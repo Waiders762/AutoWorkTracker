@@ -2,6 +2,7 @@ package com.autoworktracker.domain.model
 
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 
 data class PresenceState(
@@ -10,6 +11,8 @@ data class PresenceState(
     val lastEntryEpochMillis: Long? = null,
     val dwellConfirmed: Boolean = false,
     val sessionConfirmed: Boolean = false,
+    val noAfternoonBreakToday: Boolean = false,
+    val breakAutoDetected: Boolean = false,
 ) {
     fun isForDay(day: LocalDate, zone: ZoneId): Boolean {
         val anchor = firstEntryEpochMillis ?: lastEntryEpochMillis ?: return false
@@ -62,6 +65,12 @@ data class AppSettings(
     val hourlyRate: Double? = null,
     val currency: String = "Kč",
     val language: AppLanguage = AppLanguage.RU,
+    val autoDetectLunchBreak: Boolean = true,
+    val lunchWindowStart: LocalTime = LocalTime.of(14, 0),
+    val lunchWindowEnd: LocalTime = LocalTime.of(14, 30),
+    val noBreakHours: Double = 11.5,
+    val lunchMaxUnlockedMinutes: Int = 4,
+    val lunchMinActiveMinutes: Int = 18,
     val presence: PresenceState = PresenceState(),
     val themeMode: ThemeMode = ThemeMode.DARK,
     val dynamicColor: Boolean = false,
@@ -81,6 +90,12 @@ data class RestoredSettings(
     val presence: PresenceState,
     val currency: String = "Kč",
     val language: AppLanguage = AppLanguage.RU,
+    val autoDetectLunchBreak: Boolean = true,
+    val lunchWindowStart: LocalTime = LocalTime.of(14, 0),
+    val lunchWindowEnd: LocalTime = LocalTime.of(14, 30),
+    val noBreakHours: Double = 11.5,
+    val lunchMaxUnlockedMinutes: Int = 4,
+    val lunchMinActiveMinutes: Int = 18,
 )
 
 object BackupLocations {

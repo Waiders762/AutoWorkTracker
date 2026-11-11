@@ -12,7 +12,7 @@
 Built specifically for factory, warehouse, agency, and shift workers (`7.5 h`, `11 h`, `11.5 h`).  
 **100% Free · No Ads · No Subscriptions · Zero Battery Drain · Offline Auto-Backup**
 
-### 👉 [**Download Latest APK (v1.3.0)**](https://github.com/Waiders762/AutoWorkTracker/releases/latest) 👈
+### 👉 [**Download Latest APK (v1.4.0)**](https://github.com/Waiders762/AutoWorkTracker/releases/latest) 👈
 *(Android 8.0+ · `arm64-v8a` · Direct install)*
 
 </div>
@@ -43,6 +43,7 @@ Most time trackers in Google Play work like a stopwatch (recording raw minutes l
 - 📍 **Hands-Free Geofence Logging (`GeofencingClient`)** — Put a pin on your factory, warehouse, or office. When you stay inside the zone for at least **15 minutes** and leave within your shift window, the app logs your exact shift hours automatically.
 - 🔋 **Eco Mode (Zero Battery Drain)** — The app does not keep GPS running in the background. It sleeps until Android's system geofence wakes it up on entry or exit. **Location must stay switched on** in the notification shade, otherwise Android cannot fire the geofence.
 - 🔄 **Smart Evening Overwrite (`7.5 h` → `11 h` / `11.5 h`)** — Stepped outside the gate at `14:00` for lunch and triggered a short shift? When you finally go home in the evening (`18:00`), the app automatically updates today's record to a full long shift (`11 h` or `11.5 h`).
+- 🥪 **No-break detection (11 h or 11.5 h)** — During a lunch window you choose (default `14:00–14:30`), the phone looks at motion and whether the screen stayed locked. If you kept working, the evening exit is saved as the no-break length (default `11.5 h`). You can turn this on or off, change the window, the hour value, the unlocked-screen limit (1–15 min, default 4) and the required movement minutes (5–30, default 18) under **Settings → Smart break check**. A chip on the home screen and notification buttons can still override today.
 - 💰 **Instant Salary Calculator** — Set your hourly rate and currency (`Kč`, `€`, `$`, `₴`, `zł`) to see your exact monthly payout in real time.
 - 💾 **Permanent Auto-Backup in `Documents/`** — Every change is mirrored to `Documents/AutoWorkTracker/Отработанные_часы.txt` (human-readable report) and `autowork_backup.json`. Even if you uninstall the app or switch phones, your shift history is restored automatically on launch.
 - 🌍 **4 Languages Built-In** — Instant language selector in Settings: **English (`EN`)**, **Русский (`RU`)**, **Українська (`UA`)**, and **Čeština (`CZ`)**.
@@ -81,7 +82,7 @@ Supported currencies: **`Kč` (CZK)**, **`€` (EUR)**, **`$` (USD)**, **`₴` (
 
 ## 📲 Installation & Usage
 
-1. Download **`AutoWorkTracker-1.3.0-debug.apk`** from the [**Latest Release**](https://github.com/Waiders762/AutoWorkTracker/releases/latest).
+1. Download **`AutoWorkTracker-1.4.0-debug.apk`** from the [**Latest Release**](https://github.com/Waiders762/AutoWorkTracker/releases/latest).
 2. Open the APK on your Android phone (Android 8.0+, `arm64-v8a`) and allow installation.
 3. Open **Settings → Workplace → Open map**, place the pin on your workplace, and save.
 4. Grant **Location ("Allow all the time")**, **Notifications**, and **Unrestricted battery** in the Permissions card.
@@ -128,7 +129,7 @@ app/src/main/java/com/autoworktracker/
 
 Как работает: поставьте булавку на свой завод или склад на карте. Когда вы уходите домой в окно окончания смены, геозона (`GeofencingClient`) сама записывает отработанные часы. Геолокация в шторке должна быть включена: приложение не крутит GPS каждую секунду, его будит система при входе и выходе.
 
-Умная перезапись вечером: если вы выходили за территорию днём на обед в 14:00 и записалась короткая смена (7,5 ч), то при уходе домой вечером (18:00) запись автоматически обновится на полную длинную смену (11 ч или 11,5 ч).
+Умная перезапись вечером: если вы выходили за территорию днём на обед в 14:00 и записалась короткая смена (7,5 ч), то при уходе домой вечером (18:00) запись автоматически обновится на полную длинную смену (11 ч или 11,5 ч). В окне обеда (по умолчанию 14:00–14:30) приложение само отличает работу без перерыва: если экран почти не разблокировали и датчик видит движение, вечером запишется 11,5 ч. Окно, лимиты и часы настраиваются в «Настройках».
 
 Вечный бэкап: все смены автоматически сохраняются в папку `Documents/AutoWorkTracker/Отработанные_часы.txt` и `autowork_backup.json`.
 

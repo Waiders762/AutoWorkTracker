@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.autoworktracker.AutoWorkTrackerApp
+import com.autoworktracker.logging.AppLogger
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +29,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         val transition = event.geofenceTransition
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
+                AppLogger.geofence("Transition code=$transition")
                 when (transition) {
                     Geofence.GEOFENCE_TRANSITION_ENTER -> app.container.shiftCoordinator.onEnter()
                     Geofence.GEOFENCE_TRANSITION_DWELL -> app.container.shiftCoordinator.onDwell()

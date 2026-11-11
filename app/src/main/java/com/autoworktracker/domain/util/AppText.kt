@@ -386,6 +386,174 @@ class AppText(
         AppLanguage.EN -> "Could not write $missing to Documents"
     }
 
+    fun lunchNoBreakTitle(): String = when (language) {
+        AppLanguage.RU -> "Сегодня без обеда"
+        AppLanguage.UK -> "Сьогодні без обіду"
+        AppLanguage.CS -> "Dnes bez pauzy"
+        AppLanguage.EN -> "No break today"
+    }
+
+    fun lunchNoBreakBody(hours: String): String = when (language) {
+        AppLanguage.RU -> "Вечером запишется $hours."
+        AppLanguage.UK -> "Увечері запишеться $hours."
+        AppLanguage.CS -> "Večer se zapíše $hours."
+        AppLanguage.EN -> "$hours will be saved this evening."
+    }
+
+    fun lunchHadBreakTitle(): String = when (language) {
+        AppLanguage.RU -> "Обед был"
+        AppLanguage.UK -> "Обід був"
+        AppLanguage.CS -> "Pauza byla"
+        AppLanguage.EN -> "Break taken"
+    }
+
+    fun lunchHadBreakBody(hours: String): String = when (language) {
+        AppLanguage.RU -> "Вечером запишется $hours."
+        AppLanguage.UK -> "Увечері запишеться $hours."
+        AppLanguage.CS -> "Večer se zapíše $hours."
+        AppLanguage.EN -> "$hours will be saved this evening."
+    }
+
+    fun chipHadLunch(start: String, end: String, hours: String): String = when (language) {
+        AppLanguage.RU -> "Обед $start–$end был (вечером $hours)"
+        AppLanguage.UK -> "Обід $start–$end був (увечері $hours)"
+        AppLanguage.CS -> "Pauza $start–$end byla (večer $hours)"
+        AppLanguage.EN -> "Break $start–$end taken (evening $hours)"
+    }
+
+    fun chipNoLunch(hours: String): String = when (language) {
+        AppLanguage.RU -> "Сегодня без обеда → запишется $hours"
+        AppLanguage.UK -> "Сьогодні без обіду → запишеться $hours"
+        AppLanguage.CS -> "Dnes bez pauzy → zapíše se $hours"
+        AppLanguage.EN -> "No break today → $hours will be saved"
+    }
+
+    fun actionNoBreak(hours: String): String = when (language) {
+        AppLanguage.RU -> "Без обеда → $hours"
+        AppLanguage.UK -> "Без обіду → $hours"
+        AppLanguage.CS -> "Bez pauzy → $hours"
+        AppLanguage.EN -> "No break → $hours"
+    }
+
+    fun actionHadBreak(hours: String): String = when (language) {
+        AppLanguage.RU -> "Был обед → $hours"
+        AppLanguage.UK -> "Був обід → $hours"
+        AppLanguage.CS -> "Byla pauza → $hours"
+        AppLanguage.EN -> "Break taken → $hours"
+    }
+
+    fun lunchCardTitle(): String = when (language) {
+        AppLanguage.RU -> "Умный контроль обеда (11 / 11,5 ч)"
+        AppLanguage.UK -> "Розумний контроль обіду (11 / 11,5 год)"
+        AppLanguage.CS -> "Chytrá kontrola pauzy (11 / 11,5 h)"
+        AppLanguage.EN -> "Smart break check (11 / 11.5 h)"
+    }
+
+    fun lunchAutoSwitch(): String = when (language) {
+        AppLanguage.RU -> "Автоопределение работы без обеда"
+        AppLanguage.UK -> "Автовизначення роботи без обіду"
+        AppLanguage.CS -> "Automatické rozpoznání práce bez pauzy"
+        AppLanguage.EN -> "Detect a shift with no break"
+    }
+
+    fun lunchHoursLabel(): String = when (language) {
+        AppLanguage.RU -> "Часы при работе без обеда"
+        AppLanguage.UK -> "Години при роботі без обіду"
+        AppLanguage.CS -> "Hodiny při práci bez pauzy"
+        AppLanguage.EN -> "Hours when there was no break"
+    }
+
+    fun lunchUnlockedLabel(minutes: Int): String = when (language) {
+        AppLanguage.RU -> "Лимит активного экрана на обеде: $minutes мин"
+        AppLanguage.UK -> "Ліміт активного екрана на обіді: $minutes хв"
+        AppLanguage.CS -> "Limit odemčené obrazovky na pauze: $minutes min"
+        AppLanguage.EN -> "Unlocked screen limit at break: $minutes min"
+    }
+
+    fun lunchUnlockedHint(): String = when (language) {
+        AppLanguage.RU -> "Если телефон был разблокирован дольше, считается, что был перерыв."
+        AppLanguage.UK -> "Якщо телефон був розблокований довше, вважається, що був перерва."
+        AppLanguage.CS -> "Když je telefon odemčený déle, počítá se to jako pauza."
+        AppLanguage.EN -> "If the phone stays unlocked longer than this, a break is counted."
+    }
+
+    fun lunchMotionLabel(minutes: Int): String = when (language) {
+        AppLanguage.RU -> "Минимум движения в цеху: $minutes мин"
+        AppLanguage.UK -> "Мінімум руху в цеху: $minutes хв"
+        AppLanguage.CS -> "Minimum pohybu v provozu: $minutes min"
+        AppLanguage.EN -> "Minimum movement on the floor: $minutes min"
+    }
+
+    fun lunchMotionHint(): String = when (language) {
+        AppLanguage.RU -> "Столько минут датчик движения должен видеть работу в окне обеда."
+        AppLanguage.UK -> "Стільки хвилин датчик руху має бачити роботу у вікні обіду."
+        AppLanguage.CS -> "Tolik minut musí snímač pohybu vidět práci v okně pauzy."
+        AppLanguage.EN -> "The motion sensor must see work for this many minutes inside the break window."
+    }
+
+    fun sensorCheckTitle(): String = when (language) {
+        AppLanguage.RU -> "Проверка датчиков"
+        AppLanguage.UK -> "Перевірка датчиків"
+        AppLanguage.CS -> "Kontrola senzorů"
+        AppLanguage.EN -> "Sensor check"
+    }
+
+    fun sensorAccelerometer(ok: Boolean): String = when (language) {
+        AppLanguage.RU -> "Акселерометр: ${if (ok) "есть" else "нет"}"
+        AppLanguage.UK -> "Акселерометр: ${if (ok) "є" else "немає"}"
+        AppLanguage.CS -> "Akcelerometr: ${if (ok) "je" else "není"}"
+        AppLanguage.EN -> "Accelerometer: ${if (ok) "present" else "missing"}"
+    }
+
+    fun sensorScreen(unlocked: Boolean): String = when (language) {
+        AppLanguage.RU -> "Экран/Keyguard: ${if (unlocked) "разблокирован" else "заблокирован"}"
+        AppLanguage.UK -> "Екран/Keyguard: ${if (unlocked) "розблокований" else "заблокований"}"
+        AppLanguage.CS -> "Obrazovka/Keyguard: ${if (unlocked) "odemčeno" else "zamčeno"}"
+        AppLanguage.EN -> "Screen/Keyguard: ${if (unlocked) "unlocked" else "locked"}"
+    }
+
+    fun sensorAlarm(ok: Boolean): String = when (language) {
+        AppLanguage.RU -> "Точные будильники: ${if (ok) "разрешены" else "нет"}"
+        AppLanguage.UK -> "Точні будильники: ${if (ok) "дозволені" else "немає"}"
+        AppLanguage.CS -> "Přesné budíky: ${if (ok) "povoleny" else "ne"}"
+        AppLanguage.EN -> "Exact alarms: ${if (ok) "allowed" else "not allowed"}"
+    }
+
+    fun sensorGps(ok: Boolean): String = when (language) {
+        AppLanguage.RU -> "GPS: ${if (ok) "доступен" else "выключен"}"
+        AppLanguage.UK -> "GPS: ${if (ok) "доступний" else "вимкнений"}"
+        AppLanguage.CS -> "GPS: ${if (ok) "dostupná" else "vypnutá"}"
+        AppLanguage.EN -> "GPS: ${if (ok) "available" else "off"}"
+    }
+
+    fun sensorTestButton(): String = when (language) {
+        AppLanguage.RU -> "Тест датчика движения"
+        AppLanguage.UK -> "Тест датчика руху"
+        AppLanguage.CS -> "Test snímače pohybu"
+        AppLanguage.EN -> "Test the motion sensor"
+    }
+
+    fun sensorMoving(): String = when (language) {
+        AppLanguage.RU -> "В ДВИЖЕНИИ"
+        AppLanguage.UK -> "В РУСІ"
+        AppLanguage.CS -> "V POHYBU"
+        AppLanguage.EN -> "MOVING"
+    }
+
+    fun sensorStill(): String = when (language) {
+        AppLanguage.RU -> "ПОКОЙ"
+        AppLanguage.UK -> "СПОКІЙ"
+        AppLanguage.CS -> "KLID"
+        AppLanguage.EN -> "STILL"
+    }
+
+    fun sensorDelta(value: String): String = when (language) {
+        AppLanguage.RU -> "Ускорение Δg $value"
+        AppLanguage.UK -> "Прискорення Δg $value"
+        AppLanguage.CS -> "Zrychlení Δg $value"
+        AppLanguage.EN -> "Acceleration Δg $value"
+    }
+
     fun fileDidNotOpen(): String = when (language) {
         AppLanguage.RU -> "Файл не открылся"
         AppLanguage.UK -> "Файл не відкрився"

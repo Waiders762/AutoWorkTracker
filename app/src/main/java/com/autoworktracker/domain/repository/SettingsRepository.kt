@@ -7,6 +7,7 @@ import com.autoworktracker.domain.model.RestoredSettings
 import com.autoworktracker.domain.model.ShiftRule
 import com.autoworktracker.domain.model.ThemeMode
 import com.autoworktracker.domain.model.Workplace
+import java.time.LocalTime
 import kotlinx.coroutines.flow.Flow
 
 interface SettingsRepository {
@@ -20,6 +21,11 @@ interface SettingsRepository {
     suspend fun setLanguage(language: AppLanguage)
     suspend fun setTheme(mode: ThemeMode)
     suspend fun setDynamicColor(enabled: Boolean)
+    suspend fun setAutoDetectLunchBreak(enabled: Boolean)
+    suspend fun setLunchWindow(start: LocalTime?, end: LocalTime?)
+    suspend fun setNoBreakHours(hours: Double)
+    suspend fun setLunchMaxUnlockedMinutes(minutes: Int)
+    suspend fun setLunchMinActiveMinutes(minutes: Int)
     suspend fun updatePresence(presence: PresenceState)
     suspend fun setInitialized(initialized: Boolean)
     suspend fun normalizePresence()

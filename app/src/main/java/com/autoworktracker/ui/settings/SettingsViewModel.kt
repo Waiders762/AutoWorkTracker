@@ -12,6 +12,7 @@ import com.autoworktracker.domain.model.AppSettings
 import com.autoworktracker.domain.model.ShiftRule
 import com.autoworktracker.domain.model.ThemeMode
 import com.autoworktracker.domain.model.Workplace
+import com.autoworktracker.logging.AppLogger
 import com.autoworktracker.domain.util.AppText
 import com.autoworktracker.domain.util.WorkReportFormatter
 import com.autoworktracker.notification.NotificationHelper
@@ -153,10 +154,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setCurrency(currency: String) {
+        AppLogger.ui("Currency ${state.value.settings.currency} -> $currency")
         viewModelScope.launch { container.settingsRepository.setCurrency(currency) }
     }
 
     fun setLanguage(language: AppLanguage) {
+        AppLogger.ui("Language ${state.value.settings.language} -> $language")
         viewModelScope.launch {
             container.settingsRepository.setLanguage(language)
             NotificationHelper.createChannels(getApplication(), language)
@@ -164,11 +167,44 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setTheme(mode: ThemeMode) {
+        AppLogger.ui("Theme ${state.value.settings.themeMode} -> $mode")
         viewModelScope.launch { container.settingsRepository.setTheme(mode) }
     }
 
     fun setDynamicColor(enabled: Boolean) {
+        AppLogger.ui("Dynamic color ${state.value.settings.dynamicColor} -> $enabled")
         viewModelScope.launch { container.settingsRepository.setDynamicColor(enabled) }
+    }
+
+    fun setAutoDetectLunchBreak(enabled: Boolean) {
+        AppLogger.ui("Auto lunch ${state.value.settings.autoDetectLunchBreak} -> $enabled")
+        viewModelScope.launch {
+            container.settingsRepository.setAutoDetectLunchBreak(enabled)
+            container.maintenance.rescheduleAlarms()
+        }
+    }
+
+    fun setLunchWindow(start: LocalTime?, end: LocalTime?) {
+        AppLogger.ui("Lunch window start=$start end=$end")
+        viewModelScope.launch {
+            container.settingsRepository.setLunchWindow(start, end)
+            container.maintenance.rescheduleAlarms()
+        }
+    }
+
+    fun setNoBreakHours(hours: Double) {
+        AppLogger.ui("No-break hours ${state.value.settings.noBreakHours} -> $hours")
+        viewModelScope.launch { container.settingsRepository.setNoBreakHours(hours) }
+    }
+
+    fun setLunchMaxUnlockedMinutes(minutes: Int) {
+        AppLogger.ui("Unlocked limit ${state.value.settings.lunchMaxUnlockedMinutes} -> $minutes")
+        viewModelScope.launch { container.settingsRepository.setLunchMaxUnlockedMinutes(minutes) }
+    }
+
+    fun setLunchMinActiveMinutes(minutes: Int) {
+        AppLogger.ui("Motion minimum ${state.value.settings.lunchMinActiveMinutes} -> $minutes")
+        viewModelScope.launch { container.settingsRepository.setLunchMinActiveMinutes(minutes) }
     }
 
     fun setRuleEnabled(id: String, enabled: Boolean) = updateRule(id) { it.copy(enabled = enabled) }

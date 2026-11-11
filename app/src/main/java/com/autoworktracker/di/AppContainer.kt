@@ -12,6 +12,8 @@ import com.autoworktracker.domain.repository.ShiftRepository
 import com.autoworktracker.domain.usecase.BuildMonthSummaryUseCase
 import com.autoworktracker.domain.usecase.EvaluateExitUseCase
 import com.autoworktracker.location.GeofenceManager
+import com.autoworktracker.location.LunchBreakDetector
+import com.autoworktracker.location.LunchStatusController
 import com.autoworktracker.location.LocationHelper
 import com.autoworktracker.location.MonitoringMaintenance
 import com.autoworktracker.location.ShiftAlarmScheduler
@@ -40,11 +42,14 @@ class AppContainer(context: Context) {
     )
     val geofenceManager = GeofenceManager(appContext)
     val alarmScheduler = ShiftAlarmScheduler(appContext)
+    val lunchDetector = LunchBreakDetector(appContext, settingsRepository, notifications)
+    val lunchStatus = LunchStatusController(settingsRepository, shiftRepository, notifications)
     val maintenance = MonitoringMaintenance(
         context = appContext,
         settingsRepository = settingsRepository,
         geofenceManager = geofenceManager,
         alarmScheduler = alarmScheduler,
+        lunchDetector = lunchDetector,
     )
     val startupState = StartupState()
     val backupRestorer = BackupRestorer(

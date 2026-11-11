@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -22,6 +23,10 @@ import com.autoworktracker.domain.model.availableCurrencies
 import com.autoworktracker.domain.model.ShiftRule
 import com.autoworktracker.domain.model.ThemeMode
 import com.autoworktracker.domain.model.Workplace
+import com.autoworktracker.domain.model.toLocalTime
+import com.autoworktracker.domain.model.toMinuteOfDay
+import com.autoworktracker.logging.AppLogger
+import java.time.LocalTime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -83,6 +88,35 @@ class SettingsDataStore(context: Context) {
 
     suspend fun setDynamicColor(enabled: Boolean) {
         store.edit { prefs -> prefs[KEY_DYNAMIC] = enabled }
+        AppLogger.settings("dynamicColor=$enabled")
+    }
+
+    suspend fun setAutoDetectLunchBreak(enabled: Boolean) {
+        store.edit { prefs -> prefs[KEY_LUNCH_AUTO] = enabled }
+        AppLogger.settings("autoDetectLunchBreak=$enabled")
+    }
+
+    suspend fun setLunchWindow(start: LocalTime?, end: LocalTime?) {
+        store.edit { prefs ->
+            if (start != null) prefs[KEY_LUNCH_START] = start.toMinuteOfDay()
+            if (end != null) prefs[KEY_LUNCH_END] = end.toMinuteOfDay()
+        }
+        AppLogger.settings("lunchWindow start=$start end=$end")
+    }
+
+    suspend fun setNoBreakHours(hours: Double) {
+        store.edit { prefs -> prefs[KEY_NO_BREAK_HOURS] = hours.toString() }
+        AppLogger.settings("noBreakHours=$hours")
+    }
+
+    suspend fun setLunchMaxUnlockedMinutes(minutes: Int) {
+        store.edit { prefs -> prefs[KEY_LUNCH_UNLOCKED] = minutes.coerceIn(1, 15) }
+        AppLogger.settings("lunchMaxUnlockedMinutes=$minutes")
+    }
+
+    suspend fun setLunchMinActiveMinutes(minutes: Int) {
+        store.edit { prefs -> prefs[KEY_LUNCH_ACTIVE] = minutes.coerceIn(5, 30) }
+        AppLogger.settings("lunchMinActiveMinutes=$minutes")
     }
 
     suspend fun updatePresence(presence: PresenceState) {
@@ -90,9 +124,14 @@ class SettingsDataStore(context: Context) {
             prefs[KEY_ON_SITE] = presence.onSite
             prefs[KEY_DWELL] = presence.dwellConfirmed
             prefs[KEY_SESSION] = presence.sessionConfirmed
+            prefs[KEY_NO_BREAK] = presence.noAfternoonBreakToday
+            prefs[KEY_BREAK_AUTO] = presence.breakAutoDetected
             prefs.writeEpoch(KEY_FIRST_ENTRY, presence.firstEntryEpochMillis)
             prefs.writeEpoch(KEY_LAST_ENTRY, presence.lastEntryEpochMillis)
         }
+        AppLogger.settings(
+            "presence onSite=${presence.onSite} noBreak=${presence.noAfternoonBreakToday} auto=${presence.breakAutoDetected}",
+        )
     }
 
     suspend fun setBackupStatus(healthy: Boolean, epochMillis: Long?, error: String?) {
@@ -129,6 +168,12 @@ class SettingsDataStore(context: Context) {
             }
             prefs[KEY_CURRENCY] = settings.currency.takeIf { it in availableCurrencies } ?: "Kč"
             prefs[KEY_LANGUAGE] = settings.language.name
+            prefs[KEY_LUNCH_AUTO] = settings.autoDetectLunchBreak
+            prefs[KEY_LUNCH_START] = settings.lunchWindowStart.toMinuteOfDay()
+            prefs[KEY_LUNCH_END] = settings.lunchWindowEnd.toMinuteOfDay()
+            prefs[KEY_NO_BREAK_HOURS] = settings.noBreakHours.toString()
+            prefs[KEY_LUNCH_UNLOCKED] = settings.lunchMaxUnlockedMinutes
+            prefs[KEY_LUNCH_ACTIVE] = settings.lunchMinActiveMinutes
             val workplace = settings.workplace
             if (workplace == null) {
                 prefs[KEY_WORKPLACE_SET] = false
@@ -147,6 +192,8 @@ class SettingsDataStore(context: Context) {
             prefs[KEY_ON_SITE] = settings.presence.onSite
             prefs[KEY_DWELL] = settings.presence.dwellConfirmed
             prefs[KEY_SESSION] = settings.presence.sessionConfirmed
+            prefs[KEY_NO_BREAK] = settings.presence.noAfternoonBreakToday
+            prefs[KEY_BREAK_AUTO] = settings.presence.breakAutoDetected
             prefs.writeEpoch(KEY_FIRST_ENTRY, settings.presence.firstEntryEpochMillis)
             prefs.writeEpoch(KEY_LAST_ENTRY, settings.presence.lastEntryEpochMillis)
         }
@@ -168,6 +215,14 @@ class SettingsDataStore(context: Context) {
         val KEY_ON_SITE = booleanPreferencesKey("on_site")
         val KEY_DWELL = booleanPreferencesKey("dwell_confirmed")
         val KEY_SESSION = booleanPreferencesKey("session_confirmed")
+        val KEY_NO_BREAK = booleanPreferencesKey("no_afternoon_break")
+        val KEY_BREAK_AUTO = booleanPreferencesKey("break_auto_detected")
+        val KEY_LUNCH_AUTO = booleanPreferencesKey("lunch_auto_detect")
+        val KEY_LUNCH_START = intPreferencesKey("lunch_window_start")
+        val KEY_LUNCH_END = intPreferencesKey("lunch_window_end")
+        val KEY_NO_BREAK_HOURS = stringPreferencesKey("no_break_hours")
+        val KEY_LUNCH_UNLOCKED = intPreferencesKey("lunch_max_unlocked_min")
+        val KEY_LUNCH_ACTIVE = intPreferencesKey("lunch_min_active_min")
         val KEY_FIRST_ENTRY = longPreferencesKey("first_entry_epoch")
         val KEY_LAST_ENTRY = longPreferencesKey("last_entry_epoch")
         val KEY_INITIALIZED = booleanPreferencesKey("initialized")
@@ -207,12 +262,20 @@ private fun Preferences.toSettings(json: Json): AppSettings {
         hourlyRate = rate,
         currency = currency,
         language = language,
+        autoDetectLunchBreak = this[SettingsKeys.LUNCH_AUTO] ?: true,
+        lunchWindowStart = (this[SettingsKeys.LUNCH_START] ?: (14 * 60)).toLocalTime(),
+        lunchWindowEnd = (this[SettingsKeys.LUNCH_END] ?: (14 * 60 + 30)).toLocalTime(),
+        noBreakHours = this[SettingsKeys.NO_BREAK_HOURS]?.toDoubleOrNull()?.takeIf { it in 0.5..24.0 } ?: 11.5,
+        lunchMaxUnlockedMinutes = (this[SettingsKeys.LUNCH_UNLOCKED] ?: 4).coerceIn(1, 15),
+        lunchMinActiveMinutes = (this[SettingsKeys.LUNCH_ACTIVE] ?: 18).coerceIn(5, 30),
         presence = PresenceState(
             onSite = this[SettingsKeys.ON_SITE] ?: false,
             firstEntryEpochMillis = this.readEpoch(SettingsKeys.FIRST_ENTRY),
             lastEntryEpochMillis = this.readEpoch(SettingsKeys.LAST_ENTRY),
             dwellConfirmed = this[SettingsKeys.DWELL] ?: false,
             sessionConfirmed = this[SettingsKeys.SESSION] ?: false,
+            noAfternoonBreakToday = this[SettingsKeys.NO_BREAK] ?: false,
+            breakAutoDetected = this[SettingsKeys.BREAK_AUTO] ?: false,
         ),
         themeMode = theme,
         dynamicColor = this[SettingsKeys.DYNAMIC] ?: false,
@@ -256,6 +319,14 @@ private object SettingsKeys {
     val ON_SITE = booleanPreferencesKey("on_site")
     val DWELL = booleanPreferencesKey("dwell_confirmed")
     val SESSION = booleanPreferencesKey("session_confirmed")
+    val NO_BREAK = booleanPreferencesKey("no_afternoon_break")
+    val BREAK_AUTO = booleanPreferencesKey("break_auto_detected")
+    val LUNCH_AUTO = booleanPreferencesKey("lunch_auto_detect")
+    val LUNCH_START = intPreferencesKey("lunch_window_start")
+    val LUNCH_END = intPreferencesKey("lunch_window_end")
+    val NO_BREAK_HOURS = stringPreferencesKey("no_break_hours")
+    val LUNCH_UNLOCKED = intPreferencesKey("lunch_max_unlocked_min")
+    val LUNCH_ACTIVE = intPreferencesKey("lunch_min_active_min")
     val FIRST_ENTRY = longPreferencesKey("first_entry_epoch")
     val LAST_ENTRY = longPreferencesKey("last_entry_epoch")
     val INITIALIZED = booleanPreferencesKey("initialized")

@@ -9,13 +9,20 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.autoworktracker.domain.model.AppSettings
 import com.autoworktracker.domain.model.ShiftRule
+import com.autoworktracker.logging.AppLogger
 import java.time.LocalTime
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 
 class ShiftAlarmScheduler(private val context: Context) {
-    fun reschedule(rules: List<ShiftRule>) {
+    fun reschedule(settings: AppSettings) {
+        rescheduleRules(settings.rules)
+        rescheduleLunch(settings)
+    }
+
+    private fun rescheduleRules(rules: List<ShiftRule>) {
         val alarmManager = context.getSystemService(AlarmManager::class.java)
         for (slot in 0 until SLOT_COUNT) {
             alarmManager.cancel(pendingIntent(slot, ""))
@@ -31,6 +38,36 @@ class ShiftAlarmScheduler(private val context: Context) {
         if (!canScheduleExact(alarmManager)) {
             backedUp.forEach { rule -> enqueueFallback(workManager, rule) }
         }
+        AppLogger.alarm("Rule alarms scheduled count=${backedUp.size} exact=${canScheduleExact(alarmManager)}")
+    }
+
+    private fun rescheduleLunch(settings: AppSettings) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
+        alarmManager.cancel(lunchIntent(start = true))
+        alarmManager.cancel(lunchIntent(start = false))
+        if (!settings.autoDetectLunchBreak) {
+            AppLogger.alarm("Lunch alarms cancelled")
+            return
+        }
+        val startAt = nextTriggerMillis(settings.lunchWindowStart)
+        val endAt = nextTriggerMillis(settings.lunchWindowEnd)
+        schedule(alarmManager, startAt, lunchIntent(start = true))
+        schedule(alarmManager, endAt, lunchIntent(start = false))
+        AppLogger.alarm(
+            "Lunch alarms set start=${settings.lunchWindowStart} end=${settings.lunchWindowEnd} exact=${canScheduleExact(alarmManager)}",
+        )
+    }
+
+    private fun lunchIntent(start: Boolean): PendingIntent {
+        val intent = Intent(context, ShiftAlarmReceiver::class.java).apply {
+            action = if (start) ShiftAlarmReceiver.ACTION_LUNCH_START else ShiftAlarmReceiver.ACTION_LUNCH_END
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            if (start) LUNCH_START_REQUEST else LUNCH_END_REQUEST,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private fun enqueueFallback(workManager: WorkManager, rule: ShiftRule) {
@@ -77,6 +114,8 @@ class ShiftAlarmScheduler(private val context: Context) {
     companion object {
         const val SLOT_COUNT = 16
         private const val REQUEST_BASE = 2400
+        private const val LUNCH_START_REQUEST = 2610
+        private const val LUNCH_END_REQUEST = 2611
 
         fun nextTriggerMillis(time: LocalTime, now: ZonedDateTime = ZonedDateTime.now()): Long {
             var candidate = now.toLocalDate().atTime(time).atZone(now.zone)

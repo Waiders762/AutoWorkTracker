@@ -9,6 +9,7 @@ class MonitoringMaintenance(
     private val settingsRepository: SettingsRepository,
     private val geofenceManager: GeofenceManager,
     private val alarmScheduler: ShiftAlarmScheduler,
+    private val lunchDetector: LunchBreakDetector,
 ) {
     suspend fun ensureMonitoring() {
         rescheduleAlarms()
@@ -16,7 +17,9 @@ class MonitoringMaintenance(
     }
 
     suspend fun rescheduleAlarms() {
-        alarmScheduler.reschedule(settingsRepository.current().rules)
+        val settings = settingsRepository.current()
+        alarmScheduler.reschedule(settings)
+        lunchDetector.startWindow()
     }
 
     suspend fun ensureGeofence() {

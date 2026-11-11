@@ -52,6 +52,11 @@ data class DashboardUiState(
     val geofenceMessage: String = "",
     val backupHealthy: Boolean = false,
     val backupError: String? = null,
+    val noAfternoonBreak: Boolean = false,
+    val lunchStart: String = "14:00",
+    val lunchEnd: String = "14:30",
+    val noBreakHours: Double = 11.5,
+    val longShiftHours: Double = 11.0,
     val editor: EditorState? = null,
     val offerRestore: Boolean = false,
 )

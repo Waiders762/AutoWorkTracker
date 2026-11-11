@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import com.autoworktracker.domain.util.HoursFormatter
+import com.autoworktracker.location.ShiftActionReceiver
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -38,7 +40,7 @@ class NotificationHelper(context: Context) {
                 append(clock)
             }
         }
-        val notification = baseBuilder(CHANNEL_SHIFTS)
+        val notification = withLunchActions(baseBuilder(CHANNEL_SHIFTS), language, 11.5, 11.0)
             .setContentTitle(text.shiftRecordedTitle)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -47,16 +49,49 @@ class NotificationHelper(context: Context) {
         NotificationManagerCompat.from(appContext).notify(SHIFT_NOTIFICATION_ID, notification)
     }
 
-    fun notifyPresence(title: String, text: String) {
+    fun notifyPresence(
+        title: String,
+        body: String,
+        language: AppLanguage,
+        noBreakHours: Double,
+        regularLongHours: Double,
+    ) {
         if (!canNotify()) return
-        val notification = baseBuilder(CHANNEL_PRESENCE)
+        val notification = withLunchActions(baseBuilder(CHANNEL_PRESENCE), language, noBreakHours, regularLongHours)
             .setContentTitle(title)
-            .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setSilent(true)
             .build()
         NotificationManagerCompat.from(appContext).notify(PRESENCE_NOTIFICATION_ID, notification)
+    }
+
+    private fun withLunchActions(
+        builder: NotificationCompat.Builder,
+        language: AppLanguage,
+        noBreakHours: Double,
+        regularLongHours: Double,
+    ): NotificationCompat.Builder {
+        val text = AppText.of(language)
+        val noBreakLabel = text.actionNoBreak(HoursFormatter.formatCompact(noBreakHours, language))
+        val hadBreakLabel = text.actionHadBreak(HoursFormatter.formatCompact(regularLongHours, language))
+        return builder
+            .addAction(R.drawable.ic_notification, noBreakLabel, lunchPending(noBreak = true))
+            .addAction(R.drawable.ic_notification, hadBreakLabel, lunchPending(noBreak = false))
+    }
+
+    private fun lunchPending(noBreak: Boolean): PendingIntent {
+        val intent = Intent(appContext, ShiftActionReceiver::class.java).apply {
+            action = ShiftActionReceiver.ACTION_SET
+            putExtra(ShiftActionReceiver.EXTRA_NO_BREAK, noBreak)
+        }
+        return PendingIntent.getBroadcast(
+            appContext,
+            if (noBreak) 2701 else 2702,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private fun baseBuilder(channelId: String): NotificationCompat.Builder {
