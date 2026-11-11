@@ -5,11 +5,13 @@ import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.ArrayDeque
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 data class AppLogEntry(
+    val id: Long,
     val timestamp: String,
     val category: String,
     val message: String,
@@ -32,6 +34,7 @@ object AppLogger {
     private val entries = ArrayDeque<AppLogEntry>()
     private val entriesFlow = MutableStateFlow<List<AppLogEntry>>(emptyList())
     private val stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
+    private val nextId = AtomicLong(1)
     private var file: File? = null
 
     val entriesState: StateFlow<List<AppLogEntry>> = entriesFlow.asStateFlow()
@@ -52,6 +55,7 @@ object AppLogger {
 
     fun log(category: String, message: String) {
         val entry = AppLogEntry(
+            id = nextId.getAndIncrement(),
             timestamp = LocalDateTime.now().format(stamp),
             category = category,
             message = message,
@@ -106,6 +110,7 @@ object AppLogger {
         val catEnd = line.indexOf("] ")
         if (timeEnd <= 0 || catEnd <= timeEnd) return null
         return AppLogEntry(
+            id = nextId.getAndIncrement(),
             timestamp = line.substring(0, timeEnd),
             category = line.substring(timeEnd + 2, catEnd),
             message = line.substring(catEnd + 2),

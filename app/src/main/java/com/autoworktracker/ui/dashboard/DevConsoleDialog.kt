@@ -106,7 +106,7 @@ fun DevConsoleDialog(onDismiss: () -> Unit) {
                         Switch(checked = follow, onCheckedChange = { follow = it })
                     }
                     LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
-                        items(logs, key = { "${it.timestamp}-${it.category}-${it.message}" }) { entry ->
+                        items(logs, key = { it.id }) { entry ->
                             Text(entry.line(), style = MaterialTheme.typography.bodySmall)
                         }
                     }
