@@ -1,6 +1,8 @@
 <div align="center">
 
-# ⏱️ AutoWorkTracker
+<img src="screenshots/app_icon.svg" width="96" height="96" alt="AutoWorkTracker logo">
+
+# AutoWorkTracker
 ### Automatic Geofence Work Hours & Shift Tracker for Android
 
 [![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Waiders762/AutoWorkTracker/releases/latest)
