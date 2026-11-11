@@ -35,6 +35,11 @@ class ShiftAlarmReceiver : BroadcastReceiver() {
                         app.container.alarmScheduler.reschedule(app.container.settingsRepository.current())
                         return@launch
                     }
+                    ACTION_LUNCH_SAMPLE -> {
+                        AppLogger.alarm("Lunch sample alarm fired")
+                        app.container.lunchDetector.onSample()
+                        return@launch
+                    }
                 }
                 val ruleId = intent.getStringExtra(ShiftCheckWorker.KEY_RULE_ID)
                 if (ruleId.isNullOrBlank()) return@launch
@@ -65,6 +70,7 @@ class ShiftAlarmReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_LUNCH_START = "com.autoworktracker.action.LUNCH_START"
         const val ACTION_LUNCH_END = "com.autoworktracker.action.LUNCH_END"
+        const val ACTION_LUNCH_SAMPLE = "com.autoworktracker.action.LUNCH_SAMPLE"
         private const val TAG = "AutoWork"
     }
 }

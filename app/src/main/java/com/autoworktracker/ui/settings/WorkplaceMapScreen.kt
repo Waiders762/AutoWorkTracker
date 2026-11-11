@@ -199,14 +199,23 @@ fun WorkplaceMapScreen(
     }
     LaunchedEffect(tracking) {
         if (!tracking) return@LaunchedEffect
-        var movedToUser = false
+        val precise = viewModel.awaitPrecisePoint()
+        var centered = false
+        if (precise != null) {
+            val point = GeoPoint(precise.first, precise.second)
+            me.position = point
+            me.isEnabled = true
+            focus(map, precise.first, precise.second)
+            map.invalidate()
+            centered = true
+        }
         viewModel.deviceFixes().collect { location ->
             val point = GeoPoint(location.latitude, location.longitude)
             me.position = point
             me.isEnabled = true
             map.invalidate()
-            if (!movedToUser) {
-                movedToUser = true
+            if (!centered) {
+                centered = true
                 focus(map, location.latitude, location.longitude)
             }
         }

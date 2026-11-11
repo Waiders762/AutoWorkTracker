@@ -67,6 +67,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun deviceFixes() = container.locationHelper.fixes()
 
+    suspend fun awaitPrecisePoint(): Pair<Double, Double>? {
+        val location = container.locationHelper.currentPrecise() ?: return null
+        return location.latitude to location.longitude
+    }
+
     fun previewCurrentLocation(onReady: (latitude: Double?, longitude: Double?) -> Unit) {
         viewModelScope.launch {
             locating.value = true

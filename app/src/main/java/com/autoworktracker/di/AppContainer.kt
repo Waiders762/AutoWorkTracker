@@ -42,7 +42,7 @@ class AppContainer(context: Context) {
     )
     val geofenceManager = GeofenceManager(appContext)
     val alarmScheduler = ShiftAlarmScheduler(appContext)
-    val lunchDetector = LunchBreakDetector(appContext, settingsRepository, notifications)
+    val lunchDetector = LunchBreakDetector(appContext, settingsRepository, notifications, alarmScheduler)
     val lunchStatus = LunchStatusController(settingsRepository, shiftRepository, notifications)
     val maintenance = MonitoringMaintenance(
         context = appContext,

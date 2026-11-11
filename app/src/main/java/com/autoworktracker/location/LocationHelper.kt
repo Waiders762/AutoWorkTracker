@@ -95,15 +95,18 @@ class LocationHelper(context: Context) {
         return result
     }
 
+    /**
+     * Slow map dot. The camera is centered by one precise fix; this stream only follows the user.
+     */
     @SuppressLint("MissingPermission")
     fun fixes(): Flow<Location> = callbackFlow {
         if (!LocationPermissions.hasForeground(appContext)) {
             close()
             return@callbackFlow
         }
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2_000L)
-            .setMinUpdateIntervalMillis(1_000L)
-            .setWaitForAccurateLocation(true)
+        val request = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 8_000L)
+            .setMinUpdateIntervalMillis(5_000L)
+            .setGranularity(Granularity.GRANULARITY_FINE)
             .build()
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {

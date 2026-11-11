@@ -58,6 +58,29 @@ class ShiftAlarmScheduler(private val context: Context) {
         )
     }
 
+    fun scheduleLunchSample(triggerAtMillis: Long) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
+        schedule(alarmManager, triggerAtMillis, lunchSampleIntent())
+        AppLogger.alarm("Lunch sample scheduled at=$triggerAtMillis exact=${canScheduleExact(alarmManager)}")
+    }
+
+    fun cancelLunchSample() {
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
+        alarmManager.cancel(lunchSampleIntent())
+    }
+
+    private fun lunchSampleIntent(): PendingIntent {
+        val intent = Intent(context, ShiftAlarmReceiver::class.java).apply {
+            action = ShiftAlarmReceiver.ACTION_LUNCH_SAMPLE
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            LUNCH_SAMPLE_REQUEST,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     private fun lunchIntent(start: Boolean): PendingIntent {
         val intent = Intent(context, ShiftAlarmReceiver::class.java).apply {
             action = if (start) ShiftAlarmReceiver.ACTION_LUNCH_START else ShiftAlarmReceiver.ACTION_LUNCH_END
@@ -116,6 +139,7 @@ class ShiftAlarmScheduler(private val context: Context) {
         private const val REQUEST_BASE = 2400
         private const val LUNCH_START_REQUEST = 2610
         private const val LUNCH_END_REQUEST = 2611
+        private const val LUNCH_SAMPLE_REQUEST = 2612
 
         fun nextTriggerMillis(time: LocalTime, now: ZonedDateTime = ZonedDateTime.now()): Long {
             var candidate = now.toLocalDate().atTime(time).atZone(now.zone)

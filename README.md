@@ -9,7 +9,7 @@
 
 **Set your workplace pin once — never forget to log a shift again.**  
 Built specifically for factory, warehouse, agency, and shift workers (`7.5 h`, `11 h`, `11.5 h`).  
-**100% Free · No Ads · No Subscriptions · Zero Battery Drain · Offline Auto-Backup**
+**100% Free · No Ads · No Subscriptions · About 0–1% Battery a Day · Offline Auto-Backup**
 
 ### 👉 [**Download Latest APK (v1.4.0)**](https://github.com/Waiders762/AutoWorkTracker/releases/latest) 👈
 *(Android 8.0+ · `arm64-v8a` · Direct install)*
@@ -40,7 +40,7 @@ Built specifically for factory, warehouse, agency, and shift workers (`7.5 h`, `
 Most time trackers in Google Play work like a stopwatch (recording raw minutes like `12h 09m` including unpaid breaks and dressing time) or hide geofencing behind a monthly paywall. **AutoWorkTracker** is designed for real-world shift work:
 
 - 📍 **Hands-Free Geofence Logging (`GeofencingClient`)** — Put a pin on your factory, warehouse, or office. When you stay inside the zone for at least **15 minutes** and leave within your shift window, the app logs your exact shift hours automatically.
-- 🔋 **Eco Mode (Zero Battery Drain)** — The app does not keep GPS running in the background. It sleeps until Android's system geofence wakes it up on entry or exit. **Location must stay switched on** in the notification shade, otherwise Android cannot fire the geofence.
+- 🔋 **Low battery use (about 0–1% a day)** — Background logging is one system geofence, not a GPS loop. On a normal day the app itself stays around 0–1% in the battery list. **Location must stay switched on** in the notification shade, otherwise Android cannot fire the geofence. The lunch check, while you are at work, wakes the phone for a few seconds once a minute. The workplace map takes one precise fix, then follows you slowly.
 - 🔄 **Smart Evening Overwrite (`7.5 h` → `11 h` / `11.5 h`)** — Stepped outside the gate at `14:00` for lunch and triggered a short shift? When you finally go home in the evening (`18:00`), the app automatically updates today's record to a full long shift (`11 h` or `11.5 h`).
 - 🥪 **No-break detection (11 h or 11.5 h)** — During a lunch window you choose (default `14:00–14:30`), the phone looks at motion and whether the screen stayed locked. If you kept working, the evening exit is saved as the no-break length (default `11.5 h`). You can turn this on or off, change the window, the hour value, the unlocked-screen limit (1–15 min, default 4) and the required movement minutes (5–30, default 18) under **Settings → Smart break check**. A chip on the home screen and notification buttons can still override today.
 - 💰 **Instant Salary Calculator** — Set your hourly rate and currency (`Kč`, `€`, `$`, `₴`, `zł`) to see your exact monthly payout in real time.
@@ -126,7 +126,7 @@ app/src/main/java/com/autoworktracker/
 
 **Русский.** AutoWorkTracker — бесплатное Android-приложение для автоматического учёта рабочего времени, заводских смен (7,5 ч, 11 ч, 11,5 ч) и расчёта зарплаты (Kč, €, $, ₴, zł).
 
-Как работает: поставьте булавку на свой завод или склад на карте. Когда вы уходите домой в окно окончания смены, геозона (`GeofencingClient`) сама записывает отработанные часы. Геолокация в шторке должна быть включена: приложение не крутит GPS каждую секунду, его будит система при входе и выходе.
+Как работает: поставьте булавку на свой завод или склад на карте. Когда вы уходите домой в окно окончания смены, геозона (`GeofencingClient`) сама записывает отработанные часы. Геолокация в шторке должна быть включена: приложение не крутит GPS каждую секунду, его будит система при входе и выходе. За обычный день это около 0–1% в строке приложения. Проверка обеда на работе включается на несколько секунд раз в минуту.
 
 Умная перезапись вечером: если вы выходили за территорию днём на обед в 14:00 и записалась короткая смена (7,5 ч), то при уходе домой вечером (18:00) запись автоматически обновится на полную длинную смену (11 ч или 11,5 ч). В окне обеда (по умолчанию 14:00–14:30) приложение само отличает работу без перерыва: если экран почти не разблокировали и датчик видит движение, вечером запишется 11,5 ч. Окно, лимиты и часы настраиваются в «Настройках».
 
@@ -134,7 +134,7 @@ app/src/main/java/com/autoworktracker/
 
 **Українська.** AutoWorkTracker — безкоштовний Android-застосунок для автоматичного обліку робочих змін (7,5 год, 11 год, 11,5 год) і підрахунку зарплати (Kč, €, $, ₴, zł).
 
-Як працює: вкажіть точку роботи на карті. При виході з роботи геозона автоматично записує години зміни. Геолокація в шторці має бути увімкнена: застосунок не тримає GPS щосекунди, його будить система на вході та виході.
+Як працює: вкажіть точку роботи на карті. При виході з роботи геозона автоматично записує години зміни. Геолокація в шторці має бути увімкнена: застосунок не тримає GPS щосекунди, його будить система на вході та виході. За звичайний день це близько 0–1% у рядку застосунку. Перевірка обіду на роботі вмикається на кілька секунд раз на хвилину.
 
 Автооновлення зміни ввечері: якщо вдень записалася коротка зміна, при виході додому ввечері вона автоматично оновиться на повну довгу зміну.
 
@@ -142,7 +142,7 @@ app/src/main/java/com/autoworktracker/
 
 **Čeština.** AutoWorkTracker — bezplatná Android aplikace pro automatickou evidenci odpracovaných hodin a směn (7,5 h, 11 h, 11,5 h) s výpočtem výplaty (Kč, €, $, ₴, zł).
 
-Jak to funguje: umístěte špendlík na své pracoviště na mapě. Při odchodu z práce geozóna sama zapíše směnu. Poloha v oznamovací liště musí zůstat zapnutá: aplikace nespouští GPS každou sekundu, systém ji probudí při vstupu a odchodu (Eko režim).
+Jak to funguje: umístěte špendlík na své pracoviště na mapě. Při odchodu z práce geozóna sama zapíše směnu. Poloha v oznamovací liště musí zůstat zapnutá: aplikace nespouští GPS každou sekundu, systém ji probudí při vstupu a odchodu. Běžný den je asi 0–1 % v řádku aplikace. Kontrola oběda v práci se zapne na pár sekund jednou za minutu.
 
 Chytrý večerní přepis: pokud se přes den zapíše krátká směna (např. při odchodu na pauzu ve 14:00), při večerním odchodu domů se automaticky přepíše na celou dlouhou směnu (11 h nebo 11,5 h).
 
